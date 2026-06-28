@@ -1,0 +1,127 @@
+<p align="center">
+  <img src="art/banner.png" alt="Laravel IAM" width="100%">
+</p>
+
+<h1 align="center">Laravel IAM — Demo</h1>
+
+<p align="center">
+  <strong>A single Laravel app with the entire Laravel IAM ecosystem installed and wired.</strong><br>
+  Server + client + AI + directory + Spatie bridge, booted together, full schema migrated.
+</p>
+
+<p align="center">
+  <a href="https://github.com/padosoft/laravel-iam-server"><img src="https://img.shields.io/badge/Laravel%20IAM-v1-0b7285?style=flat-square" alt="Laravel IAM v1"></a>
+  <img src="https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat-square" alt="Laravel 13">
+  <img src="https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square" alt="PHP 8.3+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
+</p>
+
+---
+
+## What this is
+
+This is a **runnable reference app** that installs all six
+[Laravel IAM](https://github.com/padosoft) packages at once and proves they boot, auto-register and migrate
+together — the fastest way to see the whole control plane working end to end on your machine.
+
+| Package | What it brings to the demo |
+| --- | --- |
+| [laravel-iam-contracts](https://github.com/padosoft/laravel-iam-contracts) | Shared interfaces & DTOs (the dependency root) |
+| [laravel-iam-server](https://github.com/padosoft/laravel-iam-server) | Identity, PDP (RBAC+ABAC+ReBAC), OAuth/OIDC, audit, governance, Admin API |
+| [laravel-iam-client](https://github.com/padosoft/laravel-iam-client) | `iam.auth` / `iam.can` middleware + Gate adapter for consuming apps |
+| [laravel-iam-ai](https://github.com/padosoft/laravel-iam-ai) | Optional advisory-only AI governance (disabled by default) |
+| [laravel-iam-directory](https://github.com/padosoft/laravel-iam-directory) | Optional LDAP/AD login + JIT provisioning |
+| [laravel-iam-bridge-spatie-permission](https://github.com/padosoft/laravel-iam-bridge-spatie-permission) | Migration bridge from spatie/laravel-permission |
+
+> **Topology.** For simplicity the demo runs the **server and a consuming client in one app**. In
+> production you typically run the **server** as a standalone IdP/PDP and install only the **client** in each
+> consuming app. The packages support both.
+
+## Quick start
+
+```bash
+git clone https://github.com/padosoft/laravel-iam-demo
+cd laravel-iam-demo
+
+cp .env.example .env
+composer install
+php artisan key:generate
+php artisan migrate          # creates the full IAM schema (SQLite by default)
+
+php artisan serve
+```
+
+Then open **<http://localhost:8000/iam>** — a live introspection endpoint that lists the installed packages,
+the registered `iam:*` artisan commands and the migrated `iam_*` tables, straight from the booted app:
+
+```jsonc
+{
+  "app": "Laravel IAM — demo (all packages, single app)",
+  "packages_installed": [ "padosoft/laravel-iam-contracts", "padosoft/laravel-iam-server", "..." ],
+  "iam_artisan_commands": [ "iam:audit:verify", "iam:manifest:apply", "iam:spatie:scan", "..." ],
+  "iam_tables_migrated":  [ "iam_applications", "iam_audit_events", "iam_grants", "..." ]
+}
+```
+
+## How the packages get installed (pre-Packagist)
+
+Until the packages are published on Packagist, this demo pulls them straight from their GitHub tags via
+Composer **VCS repositories** (see `composer.json`):
+
+```jsonc
+"repositories": [
+  { "type": "vcs", "url": "https://github.com/padosoft/laravel-iam-server" },
+  { "type": "vcs", "url": "https://github.com/padosoft/laravel-iam-client" }
+  // …one per package
+],
+"require": {
+  "padosoft/laravel-iam-server": "^1.0",
+  "padosoft/laravel-iam-client": "^1.0"
+  // …
+}
+```
+
+> Once the packages are on Packagist, you can **delete the entire `repositories` block** — Composer will
+> resolve `padosoft/laravel-iam-*` from Packagist automatically. Nothing else changes.
+
+All six providers auto-register through Laravel package discovery (run `php artisan package:discover` to see
+them), so there is **no manual provider/config wiring** to install them.
+
+## Explore it
+
+```bash
+# The full IAM command surface (audit, manifests, access reviews, least-privilege, Spatie migration…)
+php artisan list iam
+
+# Verify the tamper-evident audit hash-chain
+php artisan iam:audit:verify --help
+
+# Inventory an existing spatie/laravel-permission setup for migration
+php artisan iam:spatie:scan --help
+```
+
+## Going further: protect a route with the PDP
+
+The client package ships `iam.auth` (authenticated IAM subject) and `iam.can:<permission>` (PDP decision,
+fail-closed). In `routes/web.php`:
+
+```php
+Route::middleware(['iam.auth', 'iam.can:invoices.view'])->group(function () {
+    Route::get('/invoices', fn () => 'You may view invoices.');
+});
+```
+
+Wiring a full authorization click-path needs an issuer + signing keys and some seeded grants — follow the
+[server](https://github.com/padosoft/laravel-iam-server) and
+[client](https://github.com/padosoft/laravel-iam-client) docs. The route block is included (commented) in
+`routes/web.php`.
+
+## Documentation
+
+Each package ships its own docmd doc-site under `docs/`. Start with the
+[server](https://github.com/padosoft/laravel-iam-server) (the control plane) and the
+[client](https://github.com/padosoft/laravel-iam-client) (how apps consume it).
+
+## License
+
+MIT © [Padosoft](https://www.padosoft.com). The Laravel framework is also MIT licensed.
