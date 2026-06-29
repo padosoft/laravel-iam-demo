@@ -1,49 +1,20 @@
 <?php
 
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\IamDemoController;
 use Illuminate\Support\Facades\Route;
-
-Route::get('/', function () {
-    return view('welcome');
-});
 
 /*
 |--------------------------------------------------------------------------
-| Laravel IAM — demo introspection
+| Laravel IAM — demo
 |--------------------------------------------------------------------------
-| A self-contained page that proves the whole IAM ecosystem is installed and
-| booted in this single app: the auto-discovered packages, the IAM artisan
-| commands, and the migrated IAM database schema. No external server needed.
+| The homepage is a live dashboard proving the whole IAM ecosystem is
+| installed and functional in this single app: installed packages, iam:*
+| commands, migrated iam_* tables, and real-time PDP allow/deny decisions
+| run through laravel-iam-server's NativeSqlEngine.
 */
-Route::get('/iam', function () {
-    $packages = [
-        'padosoft/laravel-iam-contracts',
-        'padosoft/laravel-iam-server',
-        'padosoft/laravel-iam-client',
-        'padosoft/laravel-iam-ai',
-        'padosoft/laravel-iam-directory',
-        'padosoft/laravel-iam-bridge-spatie-permission',
-    ];
-
-    $iamCommands = collect(Artisan::all())
-        ->keys()
-        ->filter(fn (string $name): bool => str_starts_with($name, 'iam:'))
-        ->values();
-
-    // List the IAM tables actually present in the (SQLite) schema.
-    $tables = collect(DB::select(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'iam_%' ORDER BY name"
-    ))->pluck('name');
-
-    return response()->json([
-        'app' => 'Laravel IAM — demo (all packages, single app)',
-        'packages_installed' => $packages,
-        'iam_artisan_commands' => $iamCommands,
-        'iam_tables_migrated' => $tables,
-        'note' => 'See README.md for example iam.auth / iam.can route protection.',
-    ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-});
+Route::get('/', [IamDemoController::class, 'show']);
+Route::get('/iam', [IamDemoController::class, 'show']);
+Route::get('/iam.json', [IamDemoController::class, 'json']);
 
 /*
 |--------------------------------------------------------------------------

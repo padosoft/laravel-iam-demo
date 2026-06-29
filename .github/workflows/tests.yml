@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  feature-tests:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, sqlite3, pdo_sqlite, openssl, bcmath
+          coverage: none
+
+      - name: Install dependencies (from Packagist)
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run the Laravel IAM feature suite
+        run: php artisan test

@@ -28,3 +28,7 @@ Thumbs.db
 
 # Demo SQLite database (regenerated via php artisan migrate)
 /database/database.sqlite
+
+# Playwright MCP artifacts
+/.playwright-mcp/
+/iam-demo-dashboard.png

@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/padosoft/laravel-iam-demo/actions/workflows/tests.yml"><img src="https://github.com/padosoft/laravel-iam-demo/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <a href="https://github.com/padosoft/laravel-iam-server"><img src="https://img.shields.io/badge/Laravel%20IAM-v1-0b7285?style=flat-square" alt="Laravel IAM v1"></a>
   <img src="https://img.shields.io/badge/Laravel-13.x-FF2D20?style=flat-square" alt="Laravel 13">
   <img src="https://img.shields.io/badge/PHP-8.3%2B-777BB4?style=flat-square" alt="PHP 8.3+">
@@ -109,6 +110,33 @@ Wiring a full authorization click-path needs an issuer + signing keys and some s
 [server](https://github.com/padosoft/laravel-iam-server) and
 [client](https://github.com/padosoft/laravel-iam-client) docs. The route block is included (commented) in
 `routes/web.php`.
+
+## Tested — the whole feature pack
+
+This demo doubles as a **verification harness**: a feature-test suite that exercises every subsystem of the
+ecosystem end to end, against the packages **as installed from Packagist** (no mocks, real classes, in-memory
+SQLite). Run it with:
+
+```bash
+php artisan test
+```
+
+```
+Tests:  58 passed (383 assertions)
+```
+
+| Suite | Covers |
+| --- | --- |
+| `PdpEngineTest` | default-deny, direct & RBAC grants, deny-overrides, deprecated perms, resource scope, ABAC conditions, tenant/app isolation, step-up/AAL |
+| `GrantsAndRequestsTest` | time-boxed grants, revoke, PIM activation, and the self-service **access request → approval → grant → allow** flow |
+| `GovernanceTest` | Access Review campaigns (certify/revoke/auto-revoke), FeatureScope cascade, least-privilege recommender (draft-only) |
+| `AuditTest` | tamper-evident hash-chain, verify, tamper detection, ES256 checkpoints, SIEM export (CEF/OCSF/LEEF) |
+| `CryptoAndSessionsTest` | envelope encryption, crypto-shredding, JWT ES256 + JWKS, revocable sessions (idle/absolute timeout), AAL |
+| `DirectoryTest` | group mapping, JIT provisioning, anti-takeover, `protected_roles`, stale-grant revocation, fail-closed auth |
+| `AiClientBridgeTest` | AI redaction / hallucination-guard / advisory-only-disabled, client deciders (fail-closed) + Gate adapter, Spatie scan/manifest/shadow-diff |
+| `OAuthAndManifestTest` | manifest validate/apply/diff/rollback, OAuth access-token ES256+JWKS, introspection, refresh rotation + replay protection |
+
+CI runs the full suite on PHP 8.3 and 8.4 on every push (see the badge above).
 
 ## Documentation
 
