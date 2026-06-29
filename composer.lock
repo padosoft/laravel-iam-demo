@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5b2f6bdeb780b74bb92619b05678d82f",
+    "content-hash": "8fdc8690e33f78e3300d538948c62743",
     "packages": [
         {
             "name": "brick/math",
@@ -2876,13 +2876,14 @@
                     "Padosoft\\Iam\\Ai\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Modulo opzionale AI di Laravel IAM: governance (redaction + hallucination-guard + audit) advisory-only su un transport sovrano. Default Regolo (UE) / Ollama (on-prem), MAI OpenAI di default.",
             "support": {
-                "source": "https://github.com/padosoft/laravel-iam-ai/tree/v1.0.1",
-                "issues": "https://github.com/padosoft/laravel-iam-ai/issues"
+                "issues": "https://github.com/padosoft/laravel-iam-ai/issues",
+                "source": "https://github.com/padosoft/laravel-iam-ai/tree/v1.0.1"
             },
             "time": "2026-06-28T09:18:35+00:00"
         },
@@ -2924,13 +2925,14 @@
                     "Padosoft\\Iam\\Bridge\\Spatie\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Bridge di migrazione da spatie/laravel-permission a Laravel IAM: scan, manifest generation, shadow mode, decision diffing, cutover, rollback.",
             "support": {
-                "source": "https://github.com/padosoft/laravel-iam-bridge-spatie-permission/tree/v1.0.1",
-                "issues": "https://github.com/padosoft/laravel-iam-bridge-spatie-permission/issues"
+                "issues": "https://github.com/padosoft/laravel-iam-bridge-spatie-permission/issues",
+                "source": "https://github.com/padosoft/laravel-iam-bridge-spatie-permission/tree/v1.0.1"
             },
             "time": "2026-06-28T09:18:48+00:00"
         },
@@ -2971,13 +2973,14 @@
                     "Padosoft\\Iam\\Client\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Client Laravel per app che consumano Laravel IAM: login OIDC, verifica JWT/JWKS, introspection, middleware iam.auth/iam.can, Gate adapter, policy cache, webhook receiver.",
             "support": {
-                "source": "https://github.com/padosoft/laravel-iam-client/tree/v1.0.1",
-                "issues": "https://github.com/padosoft/laravel-iam-client/issues"
+                "issues": "https://github.com/padosoft/laravel-iam-client/issues",
+                "source": "https://github.com/padosoft/laravel-iam-client/tree/v1.0.1"
             },
             "time": "2026-06-28T09:18:42+00:00"
         },
@@ -3009,13 +3012,14 @@
                     "Padosoft\\Iam\\Contracts\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Contratti (interfacce + DTO) condivisi di Laravel IAM: AuthorizationEngine/PDP, KeyProvider/SecretCipher, Assurance, FeatureScope.",
             "support": {
-                "source": "https://github.com/padosoft/laravel-iam-contracts/tree/v1.0.0",
-                "issues": "https://github.com/padosoft/laravel-iam-contracts/issues"
+                "issues": "https://github.com/padosoft/laravel-iam-contracts/issues",
+                "source": "https://github.com/padosoft/laravel-iam-contracts/tree/v1.0.0"
             },
             "time": "2026-06-27T18:45:13+00:00"
         },
@@ -3058,13 +3062,14 @@
                     "Padosoft\\Iam\\Directory\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Modulo opzionale Directory di Laravel IAM: LDAP/Active Directory (LdapRecord) in v1; SCIM in v2.",
             "support": {
-                "source": "https://github.com/padosoft/laravel-iam-directory/tree/v1.0.1",
-                "issues": "https://github.com/padosoft/laravel-iam-directory/issues"
+                "issues": "https://github.com/padosoft/laravel-iam-directory/issues",
+                "source": "https://github.com/padosoft/laravel-iam-directory/tree/v1.0.1"
             },
             "time": "2026-06-28T09:18:55+00:00"
         },
@@ -3120,13 +3125,14 @@
                     "Padosoft\\Iam\\": "src/"
                 }
             },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Server Laravel IAM: identity, organizations, Application Registry + manifest, PDP (RBAC+ABAC+ReBAC), OAuth (league/oauth2-server) + OIDC layer, audit tamper-evident, governance/IGA, Admin API + panel.",
             "support": {
-                "source": "https://github.com/padosoft/laravel-iam-server/tree/v1.0.1",
-                "issues": "https://github.com/padosoft/laravel-iam-server/issues"
+                "issues": "https://github.com/padosoft/laravel-iam-server/issues",
+                "source": "https://github.com/padosoft/laravel-iam-server/tree/v1.0.1"
             },
             "time": "2026-06-28T09:18:29+00:00"
         },

@@ -63,29 +63,23 @@ the registered `iam:*` artisan commands and the migrated `iam_*` tables, straigh
 }
 ```
 
-## How the packages get installed (pre-Packagist)
+## How the packages are installed
 
-Until the packages are published on Packagist, this demo pulls them straight from their GitHub tags via
-Composer **VCS repositories** (see `composer.json`):
+All six packages are published on **[Packagist](https://packagist.org/packages/padosoft/)**, so they install
+with a plain `composer require` — no custom `repositories`, no path/VCS links:
 
 ```jsonc
-"repositories": [
-  { "type": "vcs", "url": "https://github.com/padosoft/laravel-iam-server" },
-  { "type": "vcs", "url": "https://github.com/padosoft/laravel-iam-client" }
-  // …one per package
-],
 "require": {
   "padosoft/laravel-iam-server": "^1.0",
   "padosoft/laravel-iam-client": "^1.0"
-  // …
+  // …one per package, resolved straight from Packagist
 }
 ```
 
-> Once the packages are on Packagist, you can **delete the entire `repositories` block** — Composer will
-> resolve `padosoft/laravel-iam-*` from Packagist automatically. Nothing else changes.
-
-All six providers auto-register through Laravel package discovery (run `php artisan package:discover` to see
-them), so there is **no manual provider/config wiring** to install them.
+Every internal `padosoft/laravel-iam-*` dependency is also resolved from Packagist (`^1.0`) — the packages
+are fully independent, with no references back to a monorepo. And all six providers **auto-register** through
+Laravel package discovery (run `php artisan package:discover` to see them), so there is **no manual
+provider/config wiring** to install them.
 
 ## Explore it
 

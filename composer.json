@@ -88,30 +88,5 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true,
-    "repositories": [{
-        "name": "iam-directory",
-        "type": "vcs",
-        "url": "https://github.com/padosoft/laravel-iam-directory"
-    },{
-        "name": "iam-bridge-spatie-permission",
-        "type": "vcs",
-        "url": "https://github.com/padosoft/laravel-iam-bridge-spatie-permission"
-    },{
-        "name": "iam-client",
-        "type": "vcs",
-        "url": "https://github.com/padosoft/laravel-iam-client"
-    },{
-        "name": "iam-ai",
-        "type": "vcs",
-        "url": "https://github.com/padosoft/laravel-iam-ai"
-    },{
-        "name": "iam-server",
-        "type": "vcs",
-        "url": "https://github.com/padosoft/laravel-iam-server"
-    },{
-        "name": "iam-contracts",
-        "type": "vcs",
-        "url": "https://github.com/padosoft/laravel-iam-contracts"
-    }]
+    "prefer-stable": true
 }
