@@ -103,16 +103,18 @@ class AuditTest extends TestCase
 
     public function test_checkpoint_signs_and_stores_the_chain_head(): void
     {
-        // Il checkpoint firma la testa con il TokenSigner ES256: la generazione della chiave EC
-        // richiede un openssl.cnf, che su questo build di PHP (Herd/Windows) non è nel path di
-        // default. Il package supporta `iam.crypto.openssl_config`: lo puntiamo al cnf accanto al
-        // binario PHP e ricostruiamo il signer. Niente firma fittizia: si firma per davvero.
-        $cnf = dirname(PHP_BINARY).DIRECTORY_SEPARATOR.'extras'.DIRECTORY_SEPARATOR.'ssl'.DIRECTORY_SEPARATOR.'openssl.cnf';
-        if (! is_file($cnf)) {
-            $this->markTestSkipped("openssl.cnf non trovato accanto al binario PHP ({$cnf}); ES256 key-gen non configurabile in questo ambiente.");
+        // Il checkpoint firma la testa con il TokenSigner ES256 (firma reale, niente fake).
+        // Su Linux/macOS openssl_pkey_new (EC) usa l'openssl.cnf di sistema e funziona da solo.
+        // Solo su Windows (build Herd) serve puntare esplicitamente al cnf accanto al binario PHP,
+        // via la config supportata `iam.crypto.openssl_config`.
+        if (PHP_OS_FAMILY === 'Windows') {
+            $cnf = dirname(PHP_BINARY).DIRECTORY_SEPARATOR.'extras'.DIRECTORY_SEPARATOR.'ssl'.DIRECTORY_SEPARATOR.'openssl.cnf';
+            if (! is_file($cnf)) {
+                $this->markTestSkipped("openssl.cnf non trovato accanto al binario PHP ({$cnf}); ES256 key-gen non configurabile in questo ambiente Windows.");
+            }
+            config(['iam.crypto.openssl_config' => $cnf]);
+            $this->app->forgetInstance(TokenSigner::class);
         }
-        config(['iam.crypto.openssl_config' => $cnf]);
-        $this->app->forgetInstance(TokenSigner::class);
 
         $this->recordEvents();
 
