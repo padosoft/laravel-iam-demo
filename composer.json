@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "padosoft/laravel-iam-demo",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Runnable demo app: the full Laravel IAM ecosystem (server + client + AI + directory + Spatie bridge) installed and wired in a single Laravel app.",
+    "keywords": ["laravel", "iam", "identity", "authorization", "demo", "padosoft"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
