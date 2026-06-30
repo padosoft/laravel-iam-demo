@@ -38,6 +38,15 @@ together — the fastest way to see the whole control plane working end to end o
 > production you typically run the **server** as a standalone IdP/PDP and install only the **client** in each
 > consuming app. The packages support both.
 
+## See it running
+
+The demo homepage makes **real PDP decisions live** — every `ALLOW`/`DENY` below is computed by
+`laravel-iam-server`'s `NativeSqlEngine` (default-deny + deny-overrides, fully fail-closed):
+
+<p align="center">
+  <img src="art/demo-home.png" alt="Laravel IAM demo homepage — live PDP decisions (ALLOW/DENY) through NativeSqlEngine" width="100%">
+</p>
+
 ## Quick start
 
 ```bash
@@ -63,6 +72,13 @@ the registered `iam:*` artisan commands and the migrated `iam_*` tables, straigh
   "iam_tables_migrated":  [ "iam_applications", "iam_audit_events", "iam_grants", "..." ]
 }
 ```
+
+The `/iam` page renders the same introspection straight from the booted app — the installed packages, the
+registered `iam:*` commands and the full migrated `iam_*` schema:
+
+<p align="center">
+  <img src="art/demo-introspection.png" alt="Laravel IAM demo /iam introspection — installed packages, iam:* artisan commands and migrated iam_* tables" width="100%">
+</p>
 
 ## How the packages are installed
 
