@@ -138,11 +138,59 @@ Tests:  58 passed (383 assertions)
 
 CI runs the full suite on PHP 8.3 and 8.4 on every push (see the badge above).
 
+## The full ecosystem
+
+This demo installs the six PHP packages, but Laravel IAM is a **polyglot ecosystem of nine consumable
+packages** — the Laravel control plane plus thin, fail-closed client SDKs in three languages. Each one ships
+its own full documentation site (docmd). Here is what every package does and where to read about it:
+
+| Package | Registry | What it does | Docs |
+| --- | --- | --- | --- |
+| **laravel-iam-contracts** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-contracts) | Shared interfaces & DTOs — the dependency root every package implements or consumes | [doc →](https://doc.laravel-iam-contracts.padosoft.com) |
+| **laravel-iam-server** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-server) | The IAM server: identity, organizations, Application Registry + manifest, PDP (RBAC+ABAC+ReBAC), OAuth/OIDC, tamper-evident audit, governance/IGA, Admin API + panel | [doc →](https://doc.laravel-iam-server.padosoft.com) |
+| **laravel-iam-client** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-client) | Laravel client for consuming apps: OIDC login, JWT/JWKS verification, introspection, `iam.auth`/`iam.can` middleware, Gate adapter, policy cache, webhook receiver | [doc →](https://doc.laravel-iam-client.padosoft.com) |
+| **laravel-iam-ai** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-ai) | Optional AI module: advisory-only governance (redaction + hallucination-guard + audit) over a sovereign transport (Regolo/Ollama, never OpenAI by default) | [doc →](https://doc.laravel-iam-ai.padosoft.com) |
+| **laravel-iam-directory** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-directory) | Optional directory module: LDAP / Active Directory login + JIT provisioning (LdapRecord) | [doc →](https://doc.laravel-iam-directory.padosoft.com) |
+| **laravel-iam-bridge-spatie-permission** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-bridge-spatie-permission) | Migration bridge from spatie/laravel-permission: scan, manifest generation, shadow mode, decision diffing, cutover, rollback | [doc →](https://doc.laravel-iam-bridge-spatie-permission.padosoft.com) |
+| **laravel-iam-node** | [npm](https://www.npmjs.com/package/@padosoft/laravel-iam-node) | Node/TypeScript client SDK — thin, fail-closed over the PDP (`decisions/check`) + JWKS token verification, with Express/Fastify middleware | [doc →](https://doc.laravel-iam-node.padosoft.com) |
+| **laravel-iam-react-native** | [npm](https://www.npmjs.com/package/@padosoft/laravel-iam-react-native) | React Native client SDK — thin, fail-closed, with `IamProvider` + `useIam`/`useCan` hooks | [doc →](https://doc.laravel-iam-react-native.padosoft.com) |
+| **laravel-iam-rust** | [crates.io](https://crates.io/crates/laravel-iam) | Rust client SDK (`laravel-iam`) — async + blocking, fail-closed, ES256/JWKS token verification | [doc →](https://doc.laravel-iam-rust.padosoft.com) |
+
+```mermaid
+flowchart TB
+    subgraph plane["Laravel control plane (PHP)"]
+        C["contracts<br/>interfaces + DTOs"]
+        SRV["server<br/>identity · PDP · OAuth/OIDC · audit · IGA · Admin API"]
+        CLI["client<br/>iam.auth · iam.can · Gate"]
+        AI["ai<br/>advisory governance"]
+        DIR["directory<br/>LDAP/AD"]
+        BR["bridge-spatie-permission<br/>migration"]
+    end
+    subgraph sdks["Client SDKs (consume the PDP over HTTP)"]
+        NODE["node (npm)"]
+        RN["react-native (npm)"]
+        RUST["rust (crates.io)"]
+    end
+    SRV --> C
+    CLI --> C
+    AI --> C
+    DIR --> C
+    BR --> C
+    CLI -->|"PDP decisions/check"| SRV
+    NODE -.->|"POST /decisions/check"| SRV
+    RN -.->|"POST /decisions/check"| SRV
+    RUST -.->|"POST /decisions/check"| SRV
+    DEMO["this demo app<br/>server + client + ai + directory + bridge in one app"] --> SRV
+```
+
 ## Documentation
 
-Each package ships its own docmd doc-site under `docs/`. Start with the
-[server](https://github.com/padosoft/laravel-iam-server) (the control plane) and the
-[client](https://github.com/padosoft/laravel-iam-client) (how apps consume it).
+Every package ships a full documentation site built with docmd. Start with the
+**[server docs](https://doc.laravel-iam-server.padosoft.com)** (the control plane) and the
+**[client docs](https://doc.laravel-iam-client.padosoft.com)** (how apps consume it); consuming a non-PHP app?
+see the **[Node](https://doc.laravel-iam-node.padosoft.com)**,
+**[React Native](https://doc.laravel-iam-react-native.padosoft.com)** or
+**[Rust](https://doc.laravel-iam-rust.padosoft.com)** SDK docs. The table above links every package's site.
 
 ## License
 
