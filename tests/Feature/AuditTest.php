@@ -4,15 +4,14 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Padosoft\Iam\Contracts\Crypto\TokenSigner;
 use Padosoft\Iam\Domain\Audit\AuditChainVerifier;
 use Padosoft\Iam\Domain\Audit\AuditCheckpointer;
 use Padosoft\Iam\Domain\Audit\AuditHasher;
 use Padosoft\Iam\Domain\Audit\Export\AuditExporter;
 use Padosoft\Iam\Domain\Audit\Models\AuditCheckpoint;
-use Padosoft\Iam\Domain\Audit\Models\AuditEvent;
 use Padosoft\Iam\Domain\Audit\Models\AuditHead;
 use Padosoft\Iam\Domain\Audit\Pii\AuditRecorder;
-use Padosoft\Iam\Contracts\Crypto\TokenSigner;
 use Tests\TestCase;
 
 /**

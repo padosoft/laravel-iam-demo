@@ -1,0 +1,23 @@
+{
+  "schema": "laravel-iam.manifest.v2",
+  "app": {
+    "key": "demo",
+    "name": "Laravel IAM Demo App",
+    "type": "laravel",
+    "risk_level": "low"
+  },
+  "auth": {
+    "client_type": "confidential",
+    "redirect_uris": ["http://localhost:8000/callback"],
+    "auto_rotate": true,
+    "rotate_interval_days": 90
+  },
+  "permissions": [
+    { "key": "invoices.view", "risk": "low", "resource": "invoices", "action": "view" },
+    { "key": "invoices.create", "risk": "low", "resource": "invoices", "action": "create" },
+    { "key": "invoices.delete", "risk": "medium", "resource": "invoices", "action": "delete" }
+  ],
+  "roles": [
+    { "key": "clerk", "label": "Invoice Clerk", "permissions": ["invoices.view", "invoices.create"] }
+  ]
+}

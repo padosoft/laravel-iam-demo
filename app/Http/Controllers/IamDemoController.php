@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Padosoft\Iam\Contracts\Authorization\AuthorizationEngine;
 use Padosoft\Iam\Domain\Authorization\Models\Grant;
+use Padosoft\Iam\Domain\OAuth\Models\OauthClient;
 
 /**
  * Laravel IAM — demo dashboard.
@@ -41,7 +45,27 @@ class IamDemoController extends Controller
             ['valid_from' => now(), 'source' => 'demo'],
         );
 
+        // A demo operator you can actually log in as (email demo@example.com / password), granted two of the
+        // three invoice permissions — so after login the "your grants" panel shows real IAM allow/deny.
+        $demoUser = User::query()->firstOrCreate(
+            ['email' => 'demo@example.com'],
+            ['name' => 'Demo User', 'password' => Hash::make('password')],
+        );
+        foreach (['invoices.view', 'invoices.create'] as $permit) {
+            Grant::query()->firstOrCreate(
+                ['subject_type' => 'user', 'subject_id' => (string) $demoUser->getKey(), 'privilege_type' => 'permission', 'privilege_key' => $permit, 'effect' => 'permit'],
+                ['valid_from' => now(), 'source' => 'demo'],
+            );
+        }
+
         $engine = app(AuthorizationEngine::class);
+
+        // If someone is logged in, show the grants IAM decides for THEM (the "assume IAM-decided grants" demo).
+        $me = Auth::user();
+        $myGrants = $me === null ? null : array_map(fn (string $p): array => [
+            'permission' => $p,
+            'allowed' => (bool) ($engine->check(['subject' => ['type' => 'user', 'id' => (string) $me->getKey()], 'permission' => $p])['allowed'] ?? false),
+        ], ['invoices.view', 'invoices.create', 'invoices.delete']);
 
         $scenarios = [
             ['label' => 'user:1 → invoices.view', 'note' => 'has a permit grant', 'q' => ['subject' => ['type' => 'user', 'id' => '1'], 'permission' => 'invoices.view', 'explain' => true]],
@@ -62,11 +86,17 @@ class IamDemoController extends Controller
         $tables = collect(DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'iam_%' ORDER BY name"))
             ->pluck('name');
 
+        $demoClient = OauthClient::query()->where('application_key', 'demo')->first();
+
         return view('iam-demo', [
             'packages' => self::PACKAGES,
             'commands' => $commands,
             'tables' => $tables,
             'decisions' => $decisions,
+            'me' => $me,
+            'myGrants' => $myGrants,
+            'demoClientId' => $demoClient?->client_id,
+            'demoCreds' => ['email' => 'demo@example.com', 'password' => 'password'],
         ]);
     }
 

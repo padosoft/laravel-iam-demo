@@ -50,7 +50,58 @@
         <div class="card stat"><div class="n">{{ $tables->count() }}</div><div class="l">IAM tables migrated</div></div>
     </div>
 
-    <h2>Live PDP decisions <span style="color:var(--mut);font-weight:400;font-size:13px;">— real-time checks through laravel-iam-server's NativeSqlEngine</span></h2>
+    @php $reg = session('registered'); @endphp
+    <h2>Try it &nbsp;<span style="color:var(--mut);font-weight:400;font-size:13px;">— onboard this app, then log in and assume IAM-decided grants</span></h2>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+        {{-- STEP 1 — register this app in IAM (mint the OAuth client + one-time secret) --}}
+        <div class="card">
+            <h3 style="margin:0 0 8px;">1 · Register this app in IAM</h3>
+            <p style="color:var(--mut);font-size:13px;margin:0 0 12px;">Applies the committed <code>iam-manifest.json</code> — IAM creates the app's permission catalog, its role, and its OAuth client, and issues a client secret <strong>once</strong>.</p>
+            <form method="POST" action="{{ route('demo.register') }}">
+                @csrf
+                <button type="submit" data-test="register-app" style="background:var(--acc,#0b7285);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;">Register app in IAM</button>
+            </form>
+            @if ($reg)
+                <div class="card" style="margin-top:12px;background:#0d1117;">
+                    <div class="dec"><span class="badge allow">DONE</span><div><div class="q">client_id: <code>{{ $reg['client_id'] }}</code></div></div></div>
+                    @if ($reg['client_secret'])
+                        <p style="margin:8px 0 4px;color:var(--mut);font-size:13px;">Your client secret — shown ONCE. Paste it into your app's <code>.env</code>:</p>
+                        <pre data-test="secret" style="white-space:pre-wrap;background:#010409;padding:10px;border-radius:6px;font-size:12px;">IAM_CLIENT_MODE=http
+IAM_CLIENT_BASE_URL={{ url('/api/iam/v1') }}
+IAM_CLIENT_ID={{ $reg['client_id'] }}
+IAM_CLIENT_SECRET={{ $reg['client_secret'] }}</pre>
+                        <p style="margin:4px 0 0;color:var(--mut);font-size:12px;">The SDK follows automatic rotations from here — you never touch this secret again.</p>
+                    @endif
+                </div>
+            @elseif ($demoClientId)
+                <p style="margin-top:10px;color:var(--mut);font-size:12px;">Already registered as <code>{{ $demoClientId }}</code>. Re-registering re-applies the manifest and re-issues the secret.</p>
+            @endif
+        </div>
+
+        {{-- STEP 2 — log in against IAM and see the grants IAM decides --}}
+        <div class="card">
+            <h3 style="margin:0 0 8px;">2 · Log in against IAM</h3>
+            @if ($me)
+                <p style="margin:0 0 8px;">Logged in as <strong>{{ $me->email }}</strong> — these are the grants <em>IAM</em> decides for you:</p>
+                @foreach ($myGrants as $g)
+                    <div class="dec" data-test="my-grant"><span class="badge {{ $g['allowed'] ? 'allow' : 'deny' }}">{{ $g['allowed'] ? 'ALLOW' : 'DENY' }}</span><div><div class="q">{{ $g['permission'] }}</div></div></div>
+                @endforeach
+                <form method="POST" action="{{ route('demo.logout') }}" style="margin-top:12px;">@csrf<button type="submit" style="background:transparent;color:var(--mut);border:1px solid var(--mut);border-radius:8px;padding:8px 14px;cursor:pointer;">Log out</button></form>
+            @else
+                <p style="color:var(--mut);font-size:13px;margin:0 0 12px;">Sign in as the seeded operator (<code>{{ $demoCreds['email'] }}</code> / <code>{{ $demoCreds['password'] }}</code>) to see the PDP decide your grants in real time.</p>
+                @error('email')<p style="color:#f87171;font-size:13px;">{{ $message }}</p>@enderror
+                <form method="POST" action="{{ route('demo.login') }}" style="display:grid;gap:8px;max-width:320px;">
+                    @csrf
+                    <input name="email" type="email" value="{{ old('email', $demoCreds['email']) }}" placeholder="email" data-test="login-email" style="padding:9px;border-radius:6px;border:1px solid #30363d;background:#010409;color:#e6edf3;">
+                    <input name="password" type="password" value="{{ $demoCreds['password'] }}" placeholder="password" data-test="login-password" style="padding:9px;border-radius:6px;border:1px solid #30363d;background:#010409;color:#e6edf3;">
+                    <button type="submit" data-test="login-submit" style="background:var(--acc,#0b7285);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer;">Log in against IAM</button>
+                </form>
+            @endif
+        </div>
+    </div>
+
+    <h2 style="margin-top:20px;">Live PDP decisions <span style="color:var(--mut);font-weight:400;font-size:13px;">— real-time checks through laravel-iam-server's NativeSqlEngine</span></h2>
     <div class="card">
         @foreach ($decisions as $d)
             @php($allowed = $d['decision']['allowed'])

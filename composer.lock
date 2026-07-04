@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "62906127007d0ad26ad7bf1583d30ab3",
+    "content-hash": "feb4b7acb1b136841d5ecabacbff9b96",
     "packages": [
         {
             "name": "brick/math",
@@ -2945,16 +2945,16 @@
         },
         {
             "name": "padosoft/laravel-iam-client",
-            "version": "v1.0.1",
+            "version": "v1.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/laravel-iam-client.git",
-                "reference": "f092fe4259f23bcb82a3dbd2a087bc19a132590c"
+                "reference": "6c3baf5204f6bdcd2ac3415f0c863b19bd6f82e3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/laravel-iam-client/zipball/f092fe4259f23bcb82a3dbd2a087bc19a132590c",
-                "reference": "f092fe4259f23bcb82a3dbd2a087bc19a132590c",
+                "url": "https://api.github.com/repos/padosoft/laravel-iam-client/zipball/6c3baf5204f6bdcd2ac3415f0c863b19bd6f82e3",
+                "reference": "6c3baf5204f6bdcd2ac3415f0c863b19bd6f82e3",
                 "shasum": ""
             },
             "require": {
@@ -2963,6 +2963,14 @@
                 "padosoft/laravel-iam-contracts": "^1.0",
                 "php": "^8.3",
                 "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.18",
+                "orchestra/testbench": "^10.0|^11.0",
+                "padosoft/laravel-iam-server": "^1.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
             "extra": {
@@ -2987,9 +2995,9 @@
             "description": "Client Laravel per app che consumano Laravel IAM: login OIDC, verifica JWT/JWKS, introspection, middleware iam.auth/iam.can, Gate adapter, policy cache, webhook receiver.",
             "support": {
                 "issues": "https://github.com/padosoft/laravel-iam-client/issues",
-                "source": "https://github.com/padosoft/laravel-iam-client/tree/v1.0.1"
+                "source": "https://github.com/padosoft/laravel-iam-client/tree/v1.2.1"
             },
-            "time": "2026-06-28T09:18:42+00:00"
+            "time": "2026-07-04T15:47:49+00:00"
         },
         {
             "name": "padosoft/laravel-iam-contracts",
@@ -3086,16 +3094,16 @@
         },
         {
             "name": "padosoft/laravel-iam-server",
-            "version": "v1.4.0",
+            "version": "v1.13.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/laravel-iam-server.git",
-                "reference": "41a3dd271e56033cf2fc41beb402b0633b504b35"
+                "reference": "5dc4a2be69fe7fd5ebd61c8a4b9db286dc7f17a4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/laravel-iam-server/zipball/41a3dd271e56033cf2fc41beb402b0633b504b35",
-                "reference": "41a3dd271e56033cf2fc41beb402b0633b504b35",
+                "url": "https://api.github.com/repos/padosoft/laravel-iam-server/zipball/5dc4a2be69fe7fd5ebd61c8a4b9db286dc7f17a4",
+                "reference": "5dc4a2be69fe7fd5ebd61c8a4b9db286dc7f17a4",
                 "shasum": ""
             },
             "require": {
@@ -3146,9 +3154,9 @@
             "description": "Server Laravel IAM: identity, organizations, Application Registry + manifest, PDP (RBAC+ABAC+ReBAC), OAuth (league/oauth2-server) + OIDC layer, audit tamper-evident, governance/IGA, Admin API + panel.",
             "support": {
                 "issues": "https://github.com/padosoft/laravel-iam-server/issues",
-                "source": "https://github.com/padosoft/laravel-iam-server/tree/v1.4.0"
+                "source": "https://github.com/padosoft/laravel-iam-server/tree/v1.13.0"
             },
-            "time": "2026-07-01T16:50:22+00:00"
+            "time": "2026-07-03T21:51:16+00:00"
         },
         {
             "name": "paragonie/random_compat",
