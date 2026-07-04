@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Testing\TestResponse;
 use Padosoft\Iam\Contracts\Crypto\TokenSigner;
 use Padosoft\Iam\Domain\Applications\Manifest\ManifestRegistry;
 use Padosoft\Iam\Domain\Applications\Manifest\ManifestValidator;
@@ -259,7 +261,7 @@ class OAuthAndManifestTest extends TestCase
         ]);
         // secret non è fillable: lo impostiamo come fa il dominio (hash).
         $rs = OauthClient::query()->where('client_id', 'cli_rs')->first();
-        $rs->secret = \Illuminate\Support\Facades\Hash::make('s3cret');
+        $rs->secret = Hash::make('s3cret');
         $rs->save();
 
         // (a) Token attivo: firmato, presente nel ledger, non revocato.
@@ -397,7 +399,7 @@ class OAuthAndManifestTest extends TestCase
         return $rt;
     }
 
-    private function introspect(string $token): \Illuminate\Testing\TestResponse
+    private function introspect(string $token): TestResponse
     {
         // Credenziali del resource server nel body (equivalente all'HTTP Basic per ClientAuthenticator).
         return $this->postJson('/oauth/introspect', [

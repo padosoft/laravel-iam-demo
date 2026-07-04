@@ -85,7 +85,7 @@ class DirectoryTest extends TestCase
             groups: [],
         );
 
-        $outcome = (new DirectoryProvisioner())->provision($user, $policy, $org->id, []);
+        $outcome = (new DirectoryProvisioner)->provision($user, $policy, $org->id, []);
 
         $this->assertSame('provisioned', $outcome->status);
         $this->assertTrue($outcome->ok());
@@ -119,7 +119,7 @@ class DirectoryTest extends TestCase
         $mappedRoles = $mapper->rolesFor($user->groups);
         $this->assertSame(['app.a', 'app.b'], $mappedRoles);
 
-        $outcome = (new DirectoryProvisioner())->provision(
+        $outcome = (new DirectoryProvisioner)->provision(
             $user, DirectoryJitPolicy::fromArray([]), $org->id, $mappedRoles
         );
 
@@ -144,7 +144,7 @@ class DirectoryTest extends TestCase
         $dirUser = new DirectoryUser('carol', 'carol@acme.com', true, 'Carol', ['alpha']);
         $mapped = (new GroupMapper(['alpha' => 'app.a']))->rolesFor($dirUser->groups);
 
-        $outcome = (new DirectoryProvisioner())->provision($dirUser, DirectoryJitPolicy::fromArray([]), $org->id, $mapped);
+        $outcome = (new DirectoryProvisioner)->provision($dirUser, DirectoryJitPolicy::fromArray([]), $org->id, $mapped);
 
         $this->assertSame('conflict', $outcome->status);
         $this->assertSame('email_taken_non_directory', $outcome->reason);
@@ -172,7 +172,7 @@ class DirectoryTest extends TestCase
         $mapped = $mapper->rolesFor($user->groups);
         $this->assertSame(['app.staff', 'app.superadmin'], $mapped); // mapper itself does not filter
 
-        $outcome = (new DirectoryProvisioner())->provision($user, $policy, $org->id, $mapped);
+        $outcome = (new DirectoryProvisioner)->provision($user, $policy, $org->id, $mapped);
 
         $this->assertSame('provisioned', $outcome->status);
         // Protected role filtered out; the other mapped role survives.
@@ -186,7 +186,7 @@ class DirectoryTest extends TestCase
     {
         $org = $this->org();
         $mapper = new GroupMapper(['alpha' => 'app.a', 'beta' => 'app.b']);
-        $provisioner = new DirectoryProvisioner();
+        $provisioner = new DirectoryProvisioner;
 
         // First sync: groups [alpha, beta] → roles app.a, app.b.
         $userBoth = new DirectoryUser('erin', 'erin@acme.com', true, 'Erin', ['alpha', 'beta']);
@@ -226,7 +226,7 @@ class DirectoryTest extends TestCase
         $policy = DirectoryJitPolicy::fromArray(['require_verified_email' => true]);
         $user = new DirectoryUser('frank', 'frank@acme.com', false, 'Frank', []); // NOT verified
 
-        $outcome = (new DirectoryProvisioner())->provision($user, $policy, $org->id, []);
+        $outcome = (new DirectoryProvisioner)->provision($user, $policy, $org->id, []);
 
         $this->assertSame('pending', $outcome->status);
         $this->assertSame('jit_requires_verified_email', $outcome->reason);
@@ -239,7 +239,7 @@ class DirectoryTest extends TestCase
         $policy = DirectoryJitPolicy::fromArray(['allowed_domains' => ['acme.com']]);
         $user = new DirectoryUser('grace', 'grace@evil.com', true, 'Grace', []); // wrong domain
 
-        $outcome = (new DirectoryProvisioner())->provision($user, $policy, $org->id, []);
+        $outcome = (new DirectoryProvisioner)->provision($user, $policy, $org->id, []);
 
         $this->assertSame('pending', $outcome->status);
         $this->assertSame('jit_domain_not_allowed', $outcome->reason);
@@ -255,7 +255,7 @@ class DirectoryTest extends TestCase
         $authenticator = new DirectoryAuthenticator(
             $connector,
             new GroupMapper(['alpha' => 'app.a']),
-            new DirectoryProvisioner(),
+            new DirectoryProvisioner,
             ['jit' => [], 'organization_id' => $org->id],
         );
 
@@ -280,7 +280,7 @@ class DirectoryTest extends TestCase
         $authenticator = new DirectoryAuthenticator(
             new FakeDirectoryConnector($dirUser),
             new GroupMapper(['alpha' => 'app.a']),
-            new DirectoryProvisioner(),
+            new DirectoryProvisioner,
             ['jit' => ['default_roles' => ['app.member']], 'organization_id' => $org->id],
         );
 

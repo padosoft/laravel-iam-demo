@@ -47,6 +47,27 @@ The demo homepage makes **real PDP decisions live** — every `ALLOW`/`DENY` bel
   <img src="art/demo-home.png" alt="Laravel IAM demo homepage — live PDP decisions (ALLOW/DENY) through NativeSqlEngine" width="100%">
 </p>
 
+### Try it: onboard this app, then log in and assume IAM-decided grants
+
+The homepage has a **Try it** panel that walks the real consuming-app lifecycle end to end:
+
+1. **Register this app in IAM** — one button applies the committed [`iam-manifest.json`](iam-manifest.json)
+   through the real `ManifestRegistry` (submit → approve → apply). IAM creates the app's permission catalog,
+   its role, and its **OAuth client** (`cli_demo`), and issues a **client secret shown exactly once**. The
+   panel then prints the `.env` block telling you **where to paste it**:
+
+   ```dotenv
+   IAM_CLIENT_MODE=http
+   IAM_CLIENT_BASE_URL=http://localhost:8000/api/iam/v1
+   IAM_CLIENT_ID=cli_demo
+   IAM_CLIENT_SECRET=…            # shown once; the SDK auto-follows rotations from here (auto_rotate=true)
+   ```
+
+2. **Log in against IAM** — a login form authenticates a seeded operator (`demo@example.com` / `password`)
+   against the IAM user store. Once logged in, the dashboard shows the **grants IAM decides for you** —
+   `invoices.view` / `invoices.create` **ALLOW**, `invoices.delete` **DENY** — computed live by the PDP, not
+   hard-coded. That's the whole point: your app never decides permissions, IAM does.
+
 ## Quick start
 
 ```bash

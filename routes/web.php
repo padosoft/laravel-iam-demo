@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\IamDemoController;
+use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,6 +16,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [IamDemoController::class, 'show']);
 Route::get('/iam', [IamDemoController::class, 'show']);
 Route::get('/iam.json', [IamDemoController::class, 'json']);
+
+// Interactive onboarding + auth demo (see OnboardingController):
+//   register → apply the committed manifest, mint the OAuth client + one-time secret
+//   login/logout → authenticate against the IAM user store, then the dashboard shows IAM-decided grants
+Route::post('/demo/register', [OnboardingController::class, 'register'])->name('demo.register');
+Route::post('/demo/login', [OnboardingController::class, 'login'])->name('demo.login');
+Route::post('/demo/logout', [OnboardingController::class, 'logout'])->name('demo.logout');
 
 /*
 |--------------------------------------------------------------------------
