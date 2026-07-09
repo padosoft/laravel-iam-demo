@@ -108,14 +108,14 @@ with a plain `composer require` — no custom `repositories`, no path/VCS links:
 
 ```jsonc
 "require": {
-  "padosoft/laravel-iam-server": "^1.0",
-  "padosoft/laravel-iam-client": "^1.0"
+  "padosoft/laravel-iam-server": "^1.20",   // security-fixed release line
+  "padosoft/laravel-iam-client": "^1.5"      // resolves to v1.6.0+
   // …one per package, resolved straight from Packagist
 }
 ```
 
-Every internal `padosoft/laravel-iam-*` dependency is also resolved from Packagist (`^1.0`) — the packages
-are fully independent, with no references back to a monorepo. And all six providers **auto-register** through
+Every internal `padosoft/laravel-iam-*` dependency is resolved from Packagist — the packages are fully
+independent, with no references back to a monorepo. And all six providers **auto-register** through
 Laravel package discovery (run `php artisan package:discover` to see them), so there is **no manual
 provider/config wiring** to install them.
 
