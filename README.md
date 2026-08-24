@@ -71,34 +71,13 @@ The homepage has a **Try it** panel that walks the real consuming-app lifecycle 
 
 ### Delegated access: let an AI agent act for you — without your token
 
-The dashboard's **Delegated access** panel walks the whole
-[`laravel-iam-agents`](https://github.com/padosoft/laravel-iam-agents) loop, live, against the real
-services (this is the plan's acceptance walkthrough):
+The dashboard also ships a **Delegated access** panel: the full
+[`laravel-iam-agents`](https://github.com/padosoft/laravel-iam-agents) loop — register an agent,
+consent with a step-up bound to the exact parameters, RFC 8693 exchange, a **really enforced**
+agent-facing API (`401` without the delegated token, `403` outside the user ∩ agent intersection),
+logs that show *an agent acting while the `sub` stays a user*, one-click revocation.
 
-1. **Register the agent** — one click creates + approves *Invoice Copilot*: an OAuth client that can
-   ONLY do RFC 8693 token exchange, and its own PDP permission (`invoices.view` — deliberately *less*
-   than yours).
-2. **Consent (step-up bound)** — the panel calls the module's own self-service endpoints at
-   `/iam/me/delegations`: the challenge is **bound** to *(agent, scopes, ttl, purpose)* — change any
-   parameter afterwards and it is refused; the demo step-up code stands in for your TOTP. The created
-   grant cites the consent evidence (AAL2 + one-shot confirmation id).
-3. **RFC 8693 exchange** — your token is presented as `subject_token` on the app's real
-   `/oauth/token`; out comes a token with **two identities** (`sub` = you, `act` = the agent,
-   `pds_dgr` = the grant), TTL ≤ 300 s, non-refreshable.
-4. **The agent calls a REAL protected API** — `/demo/agent-api/invoices` is guarded by
-   `iam.can.delegated` (laravel-iam-client): only a delegated token minted by the exchange gets in.
-   No token ⇒ `401`; `invoices.view` (inside the intersection) ⇒ `200` — and the response *and the
-   demo log* carry the Laravel Context the middleware hydrated: **an agent is acting, the `sub`
-   stays the user**; `invoices.create` ⇒ `403` even though YOU hold it — the agent doesn't:
-   effective authority is user ∩ agent, never the union, enforced by the middleware, not app code.
-5. **PDP decision ids** — the same intersection asked to the PDP directly, both sub-decision ids cited.
-6. **Revoke** — one click, no step-up (revoking must always be easier than granting), then press
-   *Exchange* again: `invalid_grant`. The delegation audit stream at the bottom shows every exchange
-   (issued *and* refused) with both identities.
-
-The same loop runs headless as `Tests\Feature\DelegationDemoTest` — the acceptance test of the
-delegated-access design, including the enforcement half: a plain user token (no `act`) on the agent
-surface is a `401`, never a downgrade to full user authority.
+**→ Step-by-step reproduction guide: [Delegated access — the walkthrough](#delegated-access-for-ai-agents--the-walkthrough-junior-proof).**
 
 ## Quick start
 
@@ -132,6 +111,151 @@ registered `iam:*` commands and the full migrated `iam_*` schema:
 <p align="center">
   <img src="art/demo-introspection.png" alt="Laravel IAM demo /iam introspection — installed packages, iam:* artisan commands and migrated iam_* tables" width="100%">
 </p>
+
+## Delegated access for AI agents — the walkthrough (junior-proof)
+
+This demo is the **acceptance bench** of the delegated-access feature
+([`laravel-iam-agents`](https://doc.laravel-iam-agents.padosoft.com)). Follow it click by click:
+every step tells you *what to do*, *exactly what you will see*, and *what that proves*. No step
+requires anything beyond the [Quick start](#quick-start) above.
+
+> **The invariant you are about to watch being enforced:** a delegated token carries TWO identities
+> (`sub` = the user, `act` = the agent) and effective authority is the **strict intersection** of
+> what the user may do and what the agent may do — never the union, fail-closed, revocable in one
+> click.
+
+### Before you start
+
+1. Finish the [Quick start](#quick-start) (`php artisan serve` running, <http://localhost:8000> open).
+2. In the **Try it** panel, log in as the seeded operator: **`demo@example.com` / `password`**.
+   Logging in also starts a **real IAM session** (`SessionRegistry`) behind the scenes — the
+   delegation machinery is anchored to it, and logging out revokes it.
+3. Scroll to the **Delegated access** panel. All six steps happen there.
+
+### Step 1 · Register the agent
+
+**Do:** press **“Register & approve agent”.**
+
+**You see:** a green flash — *Agent "Invoice Copilot" active (`agt_…`) — OAuth client
+`cli_demo_agent` with the token-exchange grant only. PDP permission: invoices.view.*
+
+**It proves:** the agent is a **first-class identity**: its own OAuth client (which can ONLY do
+RFC 8693 token exchange — no login, no refresh tokens) and its own PDP permission. Note what it
+does **not** get: `invoices.create`. You have it; the agent doesn’t. That asymmetry is the whole
+point of steps 4–5.
+
+### Step 2 · Consent, bound to the exact parameters
+
+**Do:** press **“Open challenge & consent”**, then type the demo step-up code **`123456`** in the
+prompt (in production this is your TOTP/passkey; the demo code is `DEMO_STEPUP_CODE`, bound only
+outside production).
+
+**You see:** *Grant created: `dgr_…`* — and after the reload, the grant listed with its scopes,
+purpose, `active` status and **consent AAL: aal2**.
+
+**It proves:** consent is **PSD2-style dynamic linking**: the challenge is cryptographically bound
+to *(agent, scopes, ttl, purpose)*. The confirmation is **one-shot** (a UNIQUE
+`consent_confirmation_id` on the grant). This panel calls the module’s **own** self-service
+endpoints at `/iam/me/delegations` — nothing demo-special in the flow.
+
+### Step 3 · The RFC 8693 exchange (mint the NEW token)
+
+**Do:** press **“Exchange”.**
+
+**You see:** *Delegated token issued: sub=`1` act=`{"sub":"agent:agt_…"}` grant=`dgr_…` — TTL 300s,
+non-refreshable* — and the decoded claims rendered in the card.
+
+**It proves:** the agent **never holds your token**. The orchestrator (server-side) presents *your*
+token as `subject_token` on the app’s real `/oauth/token` and gets back a token with **two
+identities** — `sub` = you, `act` = the agent, `pds_dgr` = the grant — that lives ≤ 5 minutes and
+cannot be refreshed: re-exchanging IS the revocation check. The raw JWT stays server-side; the
+browser never sees it.
+
+### Step 4 · The agent calls a REALLY protected API — the proof
+
+**Do:** press **“Call the agent API (3 requests)”.**
+
+**You see:** *GET without token ⇒ `401` · GET invoices (view, in intersection) ⇒ `200` · POST
+invoices (create, agent lacks it) ⇒ `403`* — plus, on the 200, the echoed context:
+`{"sub":"1","actors":["agent:agt_…"],"grant_id":"dgr_…","scopes":["invoices.view"]}`.
+
+**It proves — three things at once:**
+
+| Call | Result | Meaning |
+| --- | --- | --- |
+| `GET /demo/agent-api/invoices` with **no token** | `401` | This surface accepts **only** tokens minted by the new system. (A plain user token — no `act` — is also a `401`: never a downgrade to full user authority. The test suite asserts it.) |
+| `GET` with the delegated token (`invoices.view`) | `200` | Inside the minimal user ∩ agent intersection ⇒ allowed. |
+| `POST` with the delegated token (`invoices.create`) | `403` | **You** hold `invoices.create`; the agent does not ⇒ denied **by the `iam.can.delegated` middleware**, not by app code. Intersection, never union. |
+
+Then look at the **Demo log** panel at the bottom (or run
+`tail -f storage/logs/laravel.log` in a second terminal). Every `[agent-api]` line carries the
+context Laravel hydrated automatically — **an agent is acting, but the `sub` stays a user**:
+
+```
+local.INFO: [agent-api] invoices listed by a delegated caller
+    {"iam_delegation":{"sub":"1","actors":["agent:agt_…"],"grant_id":"dgr_…","scopes":["invoices.view"]}}
+```
+
+Under the hood this is the client SDK’s full enforcement path — bearer → **mandatory
+introspection** → intersection decision → Laravel Context — with zero mocks. (The introspection
+call travels through an internal kernel dispatch because the demo runs server and resource server
+in one single-threaded app; in production it is a normal HTTPS call to the IAM host.)
+
+### Step 5 · Ask the PDP directly (decision ids)
+
+**Do:** press **“Run delegated checks”.**
+
+**You see:** *invoices.view ⇒ ALLOW · invoices.create ⇒ DENY — the user HAS invoices.create; the
+agent does not: intersection, never union.*
+
+**It proves:** the same intersection, asked to the PDP engine — every delegated decision cites both
+sub-decision ids, so an auditor can replay separately *why the user side allowed* and *why the
+agent side allowed*.
+
+### Step 6 · Revoke — and watch the next exchange die
+
+**Do:** press **“Revoke my grant”**, then press **“Exchange” again**.
+
+**You see:** first *Grant `dgr_…` revoked…*, then a red flash: *Exchange REFUSED — `invalid_grant`
+(the detailed reason is in the delegation audit stream below)*.
+
+**It proves:** revocation is one click, **never** behind a step-up (revoking must always be easier
+than granting), and it lands at the **next check** — not at token expiry. The **Delegation audit
+stream** panel shows every exchange, issued *and* refused, with both identities on each event.
+
+### Break it on purpose (optional, recommended)
+
+- **Wrong step-up code** in step 2 → consent refused, no grant created, the challenge survives for a retry.
+- **Wait 5+ minutes** after step 3, then press **“Call the agent API”** again → `401` everywhere:
+  the delegated token expired and is **non-refreshable** — the orchestrator must re-exchange, and
+  the re-exchange re-checks agent, grant and session. That short life IS the revocation freshness.
+- **A dead user session** kills the next exchange (`invalid_grant`): logging out revokes the IAM
+  session. The UI can’t show this one directly (logging out also closes the panel), so it is proven
+  headless by `test_a_dead_user_session_kills_the_next_exchange`.
+- **Tampered consent**: changing any parameter (e.g. the scopes) between the challenge and the
+  confirmation diverges the binding hash and the consent is refused — asserted by
+  `test_consent_is_dynamically_linked_and_needs_the_right_factor`.
+
+### Run the whole loop headless
+
+```bash
+php artisan test --filter=DelegationDemoTest
+```
+
+Three tests, the acceptance contract: the full loop (consent evidence, dual-identity claims,
+middleware 401/200/403 incl. the plain-user-token 401, dual-identity audit, revoke ⇒
+`invalid_grant`), dynamic-linking + wrong-factor refusals, and the dead-session exchange refusal.
+
+### Where the pieces live
+
+| Piece | File |
+| --- | --- |
+| The six panel actions (setup / exchange / call / check / revoke) | `app/Http/Controllers/DelegationDemoController.php` |
+| The protected agent API (`iam.can.delegated`) | `routes/web.php` → `/demo/agent-api/invoices` |
+| Consent wiring (verifier, session resolver, demo TOTP factor) | `config/iam-agents.php`, `app/Iam/DemoTotpVerifier.php`, `app/Iam/DemoIamSessionResolver.php` |
+| IAM session start/revoke at login/logout | `app/Http/Controllers/OnboardingController.php` |
+| Internal introspection dispatch (single-app demo only) | `app/Iam/KernelDispatchHandler.php` |
+| The acceptance test | `tests/Feature/DelegationDemoTest.php` |
 
 ## How the packages are installed
 
