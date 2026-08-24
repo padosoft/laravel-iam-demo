@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Padosoft\Iam\Contracts\Identity\SessionMeta;
+use Padosoft\Iam\Contracts\Identity\SessionRegistry;
+use Padosoft\Iam\Contracts\Support\SubjectRef;
 use Padosoft\Iam\Domain\Applications\Manifest\ManifestRegistry;
+use Padosoft\Iam\Domain\Identity\Models\User;
 use Padosoft\Iam\Domain\OAuth\Models\OauthClient;
 
 /**
@@ -59,11 +63,32 @@ class OnboardingController extends Controller
 
         $request->session()->regenerate();
 
+        // Start a REAL IAM session for the delegation demo: the RFC 8693 exchange re-verifies this
+        // session's liveness on every call, and the consent step-up is anchored to it. Logging out
+        // revokes it — after which the next exchange fails (revocation freshness, by design).
+        // iam_sessions.user_id is FK'd to iam_users: the demo mirrors its local operator into the
+        // IAM user store (in production your users ARE IAM users — one identity, no mirroring).
+        $iamUser = User::query()->firstOrCreate(
+            ['email' => (string) $request->user()?->email],
+            ['name' => (string) $request->user()?->name],
+        );
+        $session = app(SessionRegistry::class)->start(
+            new SubjectRef('user', $iamUser->id),
+            new SessionMeta,
+        );
+        $request->session()->put('iam_sid', $session->id);
+
         return redirect('/');
     }
 
     public function logout(Request $request): RedirectResponse
     {
+        // Revoke the IAM session too: any delegated-token exchange for this user now fails.
+        $sid = $request->session()->get('iam_sid');
+        if (is_string($sid) && $sid !== '') {
+            app(SessionRegistry::class)->revokeSession($sid, 'demo-logout');
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

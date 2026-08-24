@@ -33,6 +33,7 @@ together — the fastest way to see the whole control plane working end to end o
 | [laravel-iam-ai](https://github.com/padosoft/laravel-iam-ai) | Optional advisory-only AI governance (disabled by default) |
 | [laravel-iam-directory](https://github.com/padosoft/laravel-iam-directory) | Optional LDAP/AD login + JIT provisioning |
 | [laravel-iam-bridge-spatie-permission](https://github.com/padosoft/laravel-iam-bridge-spatie-permission) | Migration bridge from spatie/laravel-permission |
+| [laravel-iam-agents](https://github.com/padosoft/laravel-iam-agents) | Delegated access for AI agents: RFC 8693 exchange, intersection PDP, consent |
 
 > **Topology.** For simplicity the demo runs the **server and a consuming client in one app**. In
 > production you typically run the **server** as a standalone IdP/PDP and install only the **client** in each
@@ -67,6 +68,31 @@ The homepage has a **Try it** panel that walks the real consuming-app lifecycle 
    against the IAM user store. Once logged in, the dashboard shows the **grants IAM decides for you** —
    `invoices.view` / `invoices.create` **ALLOW**, `invoices.delete` **DENY** — computed live by the PDP, not
    hard-coded. That's the whole point: your app never decides permissions, IAM does.
+
+### Delegated access: let an AI agent act for you — without your token
+
+The dashboard's **Delegated access** panel walks the whole
+[`laravel-iam-agents`](https://github.com/padosoft/laravel-iam-agents) loop, live, against the real
+services (this is the plan's acceptance walkthrough):
+
+1. **Register the agent** — one click creates + approves *Invoice Copilot*: an OAuth client that can
+   ONLY do RFC 8693 token exchange, and its own PDP permission (`invoices.view` — deliberately *less*
+   than yours).
+2. **Consent (step-up bound)** — the panel calls the module's own self-service endpoints at
+   `/iam/me/delegations`: the challenge is **bound** to *(agent, scopes, ttl, purpose)* — change any
+   parameter afterwards and it is refused; the demo step-up code stands in for your TOTP. The created
+   grant cites the consent evidence (AAL2 + one-shot confirmation id).
+3. **RFC 8693 exchange** — your token is presented as `subject_token` on the app's real
+   `/oauth/token`; out comes a token with **two identities** (`sub` = you, `act` = the agent,
+   `pds_dgr` = the grant), TTL ≤ 300 s, non-refreshable.
+4. **The intersection rule** — `invoices.view` ⇒ ALLOW (both layers); `invoices.create` ⇒ **DENY even
+   though YOU hold it** — the agent doesn't: effective authority is user ∩ agent, never the union.
+5. **Revoke** — one click, no step-up (revoking must always be easier than granting), then press
+   *Exchange* again: `invalid_grant`. The delegation audit stream at the bottom shows every exchange
+   (issued *and* refused) with both identities.
+
+The same loop runs headless as `Tests\Feature\DelegationDemoTest` — the acceptance test of the
+delegated-access design.
 
 ## Quick start
 
@@ -172,6 +198,7 @@ Tests:  58 passed (383 assertions)
 | `DirectoryTest` | group mapping, JIT provisioning, anti-takeover, `protected_roles`, stale-grant revocation, fail-closed auth |
 | `AiClientBridgeTest` | AI redaction / hallucination-guard / advisory-only-disabled, client deciders (fail-closed) + Gate adapter, Spatie scan/manifest/shadow-diff |
 | `OAuthAndManifestTest` | manifest validate/apply/diff/rollback, OAuth access-token ES256+JWKS, introspection, refresh rotation + replay protection |
+| `DelegationDemoTest` | **the delegated-access acceptance loop**: agent registered → step-up-bound consent (dynamic linking + one-shot) → RFC 8693 exchange (`sub`+`act`+`pds_dgr`) → intersection ALLOW/DENY → dual-identity audit → revoke ⇒ `invalid_grant`; dead user session ⇒ next exchange refused |
 
 CI runs the full suite on PHP 8.3 and 8.4 on every push (see the badge above).
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Laravel IAM — Demo</title>
     <style>
         :root { --bg:#0b0f17; --card:#131a26; --line:#1f2937; --ink:#e5e7eb; --mut:#9ca3af; --teal:#2dd4bf; --red:#f87171; --green:#34d399; }
@@ -100,6 +101,8 @@ IAM_CLIENT_SECRET={{ $reg['client_secret'] }}</pre>
             @endif
         </div>
     </div>
+
+    @include('delegation-panel')
 
     <h2 style="margin-top:20px;">Live PDP decisions <span style="color:var(--mut);font-weight:400;font-size:13px;">— real-time checks through laravel-iam-server's NativeSqlEngine</span></h2>
     <div class="card">
