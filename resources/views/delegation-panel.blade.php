@@ -52,16 +52,43 @@
         @endif
     </div>
 
-    {{-- STEP 4 + 5 — intersection, then revoke --}}
+    {{-- STEP 4 — the agent calls a REAL protected API (the proof) --}}
     <div class="card">
-        <h3 style="margin:0 0 8px;">4 · Intersection &nbsp;·&nbsp; 5 · Revoke</h3>
-        <p style="color:var(--mut);font-size:13px;margin:0 0 10px;"><code>invoices.view</code> ⇒ ALLOW (both layers). <code>invoices.create</code> ⇒ <strong>DENY even though YOU hold it</strong> — the agent doesn't: user ∩ agent, never the union. Then revoke and press Exchange again: <code>invalid_grant</code>.</p>
+        <h3 style="margin:0 0 8px;">4 · The agent calls the protected API</h3>
+        <p style="color:var(--mut);font-size:13px;margin:0 0 10px;">The routes under <code>/demo/agent-api</code> are guarded by <code>iam.can.delegated</code> (laravel-iam-client): <strong>only</strong> a delegated token minted by the exchange gets in. No token ⇒ <code>401</code> · <code>invoices.view</code> ⇒ <code>200</code> · <code>invoices.create</code> ⇒ <code>403</code> — the USER holds it, the agent doesn't: minimal intersection, enforced by the middleware, not by app code.</p>
+        <form method="POST" action="{{ route('demo.delegation.call') }}">@csrf<button type="submit">Call the agent API (3 requests)</button></form>
+        @if (!empty($delegation['calls']))
+            <div class="dec exp" style="border:0;padding:8px 0 0;">
+                no token → {{ $delegation['calls']['no_token']['status'] }} ·
+                GET view → {{ $delegation['calls']['view']['status'] }} ·
+                POST create → {{ $delegation['calls']['create']['status'] }}
+            </div>
+            @if (!empty($delegation['calls']['view']['body']['iam_delegation']))
+                <div class="dec exp" style="border:0;padding:4px 0 0;white-space:pre-wrap;">Context on the 200: {{ json_encode($delegation['calls']['view']['body']['iam_delegation'], JSON_UNESCAPED_SLASHES) }}</div>
+            @endif
+        @endif
+    </div>
+
+    {{-- STEP 5 + 6 — intersection via the PDP (decision ids), then revoke --}}
+    <div class="card">
+        <h3 style="margin:0 0 8px;">5 · PDP decision ids &nbsp;·&nbsp; 6 · Revoke</h3>
+        <p style="color:var(--mut);font-size:13px;margin:0 0 10px;">Same intersection, asked to the PDP directly (both sub-decision ids cited). Then revoke and press Exchange again: <code>invalid_grant</code>.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <form method="POST" action="{{ route('demo.delegation.check') }}">@csrf<button type="submit">Run delegated checks</button></form>
             <form method="POST" action="{{ route('demo.delegation.revoke') }}">@csrf<button type="submit">Revoke my grant</button></form>
         </div>
     </div>
 </div>
+
+{{-- The demo log: iam_delegation attached to every [agent-api] line by Laravel Context --}}
+@if (!empty($delegation['log_tail']))
+    <h2 style="font-size:15px;">Demo log <span style="color:var(--mut);font-weight:400;font-size:12px;">(storage/logs/laravel.log — the middleware's Context rides every line: an agent acts, the sub is a user)</span></h2>
+    <div class="card">
+        @foreach ($delegation['log_tail'] as $line)
+            <div class="dec exp" style="border:0;padding:3px 0;word-break:break-all;">{{ $line }}</div>
+        @endforeach
+    </div>
+@endif
 
 {{-- The audit stream: every exchange (issued AND refused), grant create/revoke — both identities on each event --}}
 @if ($delegation['audit'])

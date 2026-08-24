@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Padosoft\Iam\Agents\Models\Agent;
@@ -60,9 +61,10 @@ class DelegationDemoController extends Controller
         );
         $client->secret = Hash::make($secret);
         $client->save();
-        // The exchange in step 3 runs server-side in this demo, so the secret lives in the session
-        // (in production the ORCHESTRATOR holds the agent credential — never the browser, never the LLM).
-        $request->session()->put('delegation_demo.agent_secret', $secret);
+        // The exchange (step 3) and the introspection behind iam.can.delegated (step 4) both run
+        // server-side: the plaintext secret lives in the app cache — the demo's stand-in for the
+        // ORCHESTRATOR's credential store (never the browser, never the LLM).
+        Cache::forever('delegation_demo.agent_secret', $secret);
 
         $agent = Agent::query()->firstOrCreate(
             ['client_id' => self::AGENT_CLIENT_ID],
@@ -101,7 +103,7 @@ class DelegationDemoController extends Controller
     {
         $userId = (string) Auth::id();
         $sid = $request->session()->get('iam_sid');
-        $secret = $request->session()->get('delegation_demo.agent_secret');
+        $secret = Cache::get('delegation_demo.agent_secret');
         if ($userId === '' || ! is_string($sid) || ! is_string($secret)) {
             return redirect('/')->with('delegation_flash', ['step' => 'exchange', 'ok' => false, 'detail' => 'Log in and run setup first.']);
         }
@@ -136,6 +138,9 @@ class DelegationDemoController extends Controller
 
         $claims = app(TokenSigner::class)->parse($body['access_token']);
         $request->session()->put('delegation_demo.token', [
+            // The raw JWT stays server-side (the orchestrator's hand) — step 4 presents it as the
+            // Bearer on the agent-facing API. It is NEVER rendered to the browser.
+            'jwt' => $body['access_token'],
             'claims' => [
                 'sub' => $claims['sub'] ?? null,
                 'act' => $claims['act'] ?? null,
@@ -150,6 +155,51 @@ class DelegationDemoController extends Controller
             'step' => 'exchange', 'ok' => true,
             'detail' => 'Delegated token issued: sub='.($claims['sub'] ?? '?').' act='.json_encode($claims['act'] ?? null)
                 .' grant='.($claims['pds_dgr'] ?? '?').' — TTL '.($body['expires_in'] ?? '?').'s, non-refreshable.',
+        ]);
+    }
+
+    /**
+     * Step 4 — THE proof: the agent calls a REAL protected API. The routes under /demo/agent-api
+     * are guarded by the client SDK's iam.can.delegated middleware — bearer required, verified via
+     * mandatory introspection, decided on the user ∩ agent intersection. Three calls show the
+     * whole contract: no token ⇒ 401; invoices.view (inside the intersection) ⇒ 200 — and the
+     * response echoes the Laravel Context the middleware hydrated (an AGENT is acting, but `sub`
+     * is the USER); invoices.create (the user has it, the agent does NOT) ⇒ 403.
+     */
+    public function call(Request $request): RedirectResponse
+    {
+        $token = $request->session()->get('delegation_demo.token');
+        $jwt = is_array($token) ? ($token['jwt'] ?? null) : null;
+        if (! is_string($jwt)) {
+            return redirect('/')->with('delegation_flash', ['step' => 'call', 'ok' => false, 'detail' => 'Run the exchange first.']);
+        }
+
+        $hit = function (string $method, ?string $bearer): array {
+            $sub = SymfonyRequest::create(url('/demo/agent-api/invoices'), $method);
+            $sub->headers->set('Accept', 'application/json');
+            if ($bearer !== null) {
+                $sub->headers->set('Authorization', 'Bearer '.$bearer);
+            }
+            $response = app()->handle($sub);
+
+            return ['status' => $response->getStatusCode(), 'body' => json_decode((string) $response->getContent(), true)];
+        };
+
+        $results = [
+            'no_token' => $hit('GET', null),          // 401: this surface ONLY accepts delegated bearers
+            'view' => $hit('GET', $jwt),              // 200: inside the intersection
+            'create' => $hit('POST', $jwt),           // 403: the USER holds invoices.create, the agent does not
+        ];
+
+        $request->session()->put('delegation_demo.calls', $results);
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'call',
+            'ok' => $results['no_token']['status'] === 401 && $results['view']['status'] === 200 && $results['create']['status'] === 403,
+            'detail' => 'GET without token ⇒ '.$results['no_token']['status']
+                .' · GET invoices (view, in intersection) ⇒ '.$results['view']['status']
+                .' · POST invoices (create, agent lacks it) ⇒ '.$results['create']['status']
+                .' — the 200 response and the demo log carry iam_delegation: an AGENT acts, the sub stays the USER.',
         ]);
     }
 
@@ -244,10 +294,26 @@ class DelegationDemoController extends Controller
                 'metadata' => $e->metadata_json,
             ])->all();
 
+        // The demo log tail: every [agent-api] line carries the iam_delegation Context the
+        // middleware hydrated — the "an agent is acting, the sub is a user" evidence.
+        $logTail = [];
+        $logFile = storage_path('logs/laravel.log');
+        if (is_file($logFile)) {
+            $lines = array_filter(explode("\n", (string) file_get_contents($logFile)), fn (string $l): bool => str_contains($l, '[agent-api]'));
+            $logTail = array_slice(array_values($lines), -3);
+        }
+
+        $tokenState = session('delegation_demo.token');
+        if (is_array($tokenState)) {
+            unset($tokenState['jwt']); // the raw token never reaches the browser
+        }
+
         return [
             'agent' => $agent === null ? null : ['id' => $agent->id, 'name' => $agent->name, 'status' => $agent->status, 'max_scopes' => $agent->max_scopes],
             'grants' => $grants,
-            'token' => session('delegation_demo.token'),
+            'token' => $tokenState,
+            'calls' => session('delegation_demo.calls'),
+            'log_tail' => $logTail,
             'audit' => $audit,
             'stepup_code' => app()->environment('production') ? null : (string) env('DEMO_STEPUP_CODE', '123456'),
         ];

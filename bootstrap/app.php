@@ -12,10 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // The agent-facing API is a BEARER surface (delegated tokens verified by
+        // iam.can.delegated): stateless by nature, so no CSRF token to present.
+        $middleware->validateCsrfTokens(except: ['demo/agent-api/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->is('demo/agent-api/*'),
         );
     })->create();

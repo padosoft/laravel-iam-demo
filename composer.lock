@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6cc9929c5b22419aa43b22998759c091",
+    "content-hash": "38c56dc5946c88e57e60f47620a42ce6",
     "packages": [
         {
             "name": "brick/math",
@@ -2841,16 +2841,16 @@
         },
         {
             "name": "padosoft/laravel-iam-agents",
-            "version": "v0.2.0",
+            "version": "v1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/laravel-iam-agents.git",
-                "reference": "45c0f9bb5214f9c6e326703bd9a650365cbd6d8e"
+                "reference": "e99d18e7f599ad040397c2f736341af218c36876"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/laravel-iam-agents/zipball/45c0f9bb5214f9c6e326703bd9a650365cbd6d8e",
-                "reference": "45c0f9bb5214f9c6e326703bd9a650365cbd6d8e",
+                "url": "https://api.github.com/repos/padosoft/laravel-iam-agents/zipball/e99d18e7f599ad040397c2f736341af218c36876",
+                "reference": "e99d18e7f599ad040397c2f736341af218c36876",
                 "shasum": ""
             },
             "require": {
@@ -2879,7 +2879,7 @@
                     ]
                 },
                 "branch-alias": {
-                    "dev-main": "0.1-dev"
+                    "dev-main": "1.x-dev"
                 }
             },
             "autoload": {
@@ -2904,9 +2904,9 @@
             ],
             "support": {
                 "issues": "https://github.com/padosoft/laravel-iam-agents/issues",
-                "source": "https://github.com/padosoft/laravel-iam-agents/tree/v0.2.0"
+                "source": "https://github.com/padosoft/laravel-iam-agents/tree/v1.0.0"
             },
-            "time": "2026-08-24T08:13:59+00:00"
+            "time": "2026-08-24T09:37:06+00:00"
         },
         {
             "name": "padosoft/laravel-iam-ai",

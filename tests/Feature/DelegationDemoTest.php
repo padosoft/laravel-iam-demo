@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Padosoft\Iam\Agents\Models\Agent;
 use Padosoft\Iam\Agents\Models\DelegationGrantModel;
+use Padosoft\Iam\Contracts\Crypto\TokenSigner;
 use Padosoft\Iam\Contracts\Identity\SessionRegistry;
 use Padosoft\Iam\Domain\Audit\Models\AuditEvent;
 use Tests\TestCase;
@@ -76,6 +77,28 @@ class DelegationDemoTest extends TestCase
         $this->assertSame(['sub' => 'agent:'.$agent->id], $token['claims']['act'], 'act is the AGENT');
         $this->assertSame($grant->id, $token['claims']['pds_dgr'], 'the token cites the grant (targeted revocation)');
         $this->assertLessThanOrEqual(300, (int) $token['expires_in'], 'short TTL by design');
+
+        // THE PROOF — the agent hits a REAL protected API (iam.can.delegated, mandatory
+        // introspection, intersection): no token ⇒ 401; the delegated token reads invoices (in
+        // the intersection) ⇒ 200 AND the response echoes the hydrated Laravel Context — an AGENT
+        // is acting, the sub stays the USER; invoices.create (user holds it, agent doesn't) ⇒ 403.
+        $jwt = $token['jwt'];
+        $this->getJson('/demo/agent-api/invoices')->assertStatus(401);
+        $this->withToken($jwt)->getJson('/demo/agent-api/invoices')
+            ->assertOk()
+            ->assertJsonPath('iam_delegation.sub', (string) $user->getKey())
+            ->assertJsonPath('iam_delegation.actors.0', 'agent:'.$agent->id)
+            ->assertJsonPath('iam_delegation.grant_id', $grant->id);
+        $this->withToken($jwt)->postJson('/demo/agent-api/invoices')->assertStatus(403);
+
+        // A PLAIN user token (no act) is refused on the agent surface: 401, never a downgrade.
+        $plainUserToken = app(TokenSigner::class)
+            ->issue(['sub' => (string) $user->getKey(), 'sid' => (string) session('iam_sid'), 'aud' => 'cli_demo', 'scope' => 'openid'], 900);
+        $this->withToken($plainUserToken)->getJson('/demo/agent-api/invoices')->assertStatus(401);
+
+        // The orchestrator-side walkthrough button reports the same three outcomes.
+        $this->post(route('demo.delegation.call'))->assertRedirect('/');
+        $this->assertTrue(session('delegation_flash')['ok'], 'call step must see 401/200/403');
 
         // Intersection: view passes both layers; create is DENIED although the USER holds it.
         $this->post(route('demo.delegation.check'))->assertRedirect('/');

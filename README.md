@@ -85,14 +85,20 @@ services (this is the plan's acceptance walkthrough):
 3. **RFC 8693 exchange** — your token is presented as `subject_token` on the app's real
    `/oauth/token`; out comes a token with **two identities** (`sub` = you, `act` = the agent,
    `pds_dgr` = the grant), TTL ≤ 300 s, non-refreshable.
-4. **The intersection rule** — `invoices.view` ⇒ ALLOW (both layers); `invoices.create` ⇒ **DENY even
-   though YOU hold it** — the agent doesn't: effective authority is user ∩ agent, never the union.
-5. **Revoke** — one click, no step-up (revoking must always be easier than granting), then press
+4. **The agent calls a REAL protected API** — `/demo/agent-api/invoices` is guarded by
+   `iam.can.delegated` (laravel-iam-client): only a delegated token minted by the exchange gets in.
+   No token ⇒ `401`; `invoices.view` (inside the intersection) ⇒ `200` — and the response *and the
+   demo log* carry the Laravel Context the middleware hydrated: **an agent is acting, the `sub`
+   stays the user**; `invoices.create` ⇒ `403` even though YOU hold it — the agent doesn't:
+   effective authority is user ∩ agent, never the union, enforced by the middleware, not app code.
+5. **PDP decision ids** — the same intersection asked to the PDP directly, both sub-decision ids cited.
+6. **Revoke** — one click, no step-up (revoking must always be easier than granting), then press
    *Exchange* again: `invalid_grant`. The delegation audit stream at the bottom shows every exchange
    (issued *and* refused) with both identities.
 
 The same loop runs headless as `Tests\Feature\DelegationDemoTest` — the acceptance test of the
-delegated-access design.
+delegated-access design, including the enforcement half: a plain user token (no `act`) on the agent
+surface is a `401`, never a downgrade to full user authority.
 
 ## Quick start
 
@@ -136,7 +142,7 @@ with a plain `composer require` — no custom `repositories`, no path/VCS links:
 "require": {
   "padosoft/laravel-iam-server": "^1.23",   // delegation-ready release line
   "padosoft/laravel-iam-client": "^1.9",    // act-aware PEP + TokenExchanger
-  "padosoft/laravel-iam-agents": "^0.2"      // delegated access for AI agents
+  "padosoft/laravel-iam-agents": "^1.0"      // delegated access for AI agents
   // …one per package, resolved straight from Packagist
 }
 ```
