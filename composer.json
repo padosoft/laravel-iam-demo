@@ -15,7 +15,7 @@
     "require": {
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
-        "padosoft/laravel-iam-agents": "^0.2",
+        "padosoft/laravel-iam-agents": "^1.0",
         "padosoft/laravel-iam-ai": "^1.2",
         "padosoft/laravel-iam-bridge-spatie-permission": "^1.0",
         "padosoft/laravel-iam-client": "^1.9",
