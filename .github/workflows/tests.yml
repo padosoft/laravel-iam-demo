@@ -26,13 +26,15 @@ jobs:
           extensions: mbstring, sqlite3, pdo_sqlite, openssl, bcmath
           coverage: none
 
-      - name: Install dependencies (from Packagist)
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Prepare app
+      # BEFORE composer install: laravel-iam-server >= 1.23 derives its dev KEK from APP_KEY at
+      # boot, and `composer install` runs `artisan package:discover` (which boots the app).
+      - name: Prepare app (env before install)
         run: |
           cp .env.example .env
-          php artisan key:generate
+          sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" .env
+
+      - name: Install dependencies (from Packagist)
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run the Laravel IAM feature suite
         run: php artisan test

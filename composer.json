@@ -3,18 +3,26 @@
     "name": "padosoft/laravel-iam-demo",
     "type": "project",
     "description": "Runnable demo app: the full Laravel IAM ecosystem (server + client + AI + directory + Spatie bridge) installed and wired in a single Laravel app.",
-    "keywords": ["laravel", "iam", "identity", "authorization", "demo", "padosoft"],
+    "keywords": [
+        "laravel",
+        "iam",
+        "identity",
+        "authorization",
+        "demo",
+        "padosoft"
+    ],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
+        "padosoft/laravel-iam-agents": "^0.2",
         "padosoft/laravel-iam-ai": "^1.2",
         "padosoft/laravel-iam-bridge-spatie-permission": "^1.0",
-        "padosoft/laravel-iam-client": "^1.5",
-        "padosoft/laravel-iam-contracts": "^1.0",
+        "padosoft/laravel-iam-client": "^1.9",
+        "padosoft/laravel-iam-contracts": "^1.3",
         "padosoft/laravel-iam-directory": "^1.0",
-        "padosoft/laravel-iam-server": "^1.20"
+        "padosoft/laravel-iam-server": "^1.23",
+        "php": "^8.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -88,5 +96,11 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/padosoft/laravel-iam-agents.git"
+        }
+    ]
 }

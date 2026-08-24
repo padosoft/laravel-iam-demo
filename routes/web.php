@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DelegationDemoController;
 use App\Http\Controllers\IamDemoController;
 use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,16 @@ Route::get('/iam.json', [IamDemoController::class, 'json']);
 Route::post('/demo/register', [OnboardingController::class, 'register'])->name('demo.register');
 Route::post('/demo/login', [OnboardingController::class, 'login'])->name('demo.login');
 Route::post('/demo/logout', [OnboardingController::class, 'logout'])->name('demo.logout');
+
+// Delegated access walkthrough (laravel-iam-agents): register agent -> consent (the module's own
+// self-service endpoints at /iam/me/delegations do the challenge+grant) -> RFC 8693 exchange ->
+// intersection check -> revoke -> the next exchange fails. See the "Delegated access" panel.
+Route::middleware('auth')->group(function () {
+    Route::post('/demo/delegation/setup', [DelegationDemoController::class, 'setup'])->name('demo.delegation.setup');
+    Route::post('/demo/delegation/exchange', [DelegationDemoController::class, 'exchange'])->name('demo.delegation.exchange');
+    Route::post('/demo/delegation/check', [DelegationDemoController::class, 'check'])->name('demo.delegation.check');
+    Route::post('/demo/delegation/revoke', [DelegationDemoController::class, 'revoke'])->name('demo.delegation.revoke');
+});
 
 /*
 |--------------------------------------------------------------------------

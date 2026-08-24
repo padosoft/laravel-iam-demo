@@ -29,6 +29,7 @@ class IamDemoController extends Controller
         'padosoft/laravel-iam-ai' => 'Advisory-only AI governance (disabled by default)',
         'padosoft/laravel-iam-directory' => 'LDAP/AD login + JIT provisioning',
         'padosoft/laravel-iam-bridge-spatie-permission' => 'Migration bridge from spatie/laravel-permission',
+        'padosoft/laravel-iam-agents' => 'Delegated access for AI agents: RFC 8693 exchange, intersection PDP, consent',
     ];
 
     public function show()
@@ -82,6 +83,7 @@ class IamDemoController extends Controller
             'myGrants' => $myGrants,
             'demoClientId' => $demoClient?->client_id,
             'demoCreds' => ['email' => 'demo@example.com', 'password' => env('DEMO_PASSWORD', 'password')],
+            'delegation' => DelegationDemoController::panelState(),
         ]);
     }
 
