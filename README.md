@@ -21,7 +21,7 @@
 
 ## What this is
 
-This is a **runnable reference app** that installs all six
+This is a **runnable reference app** that installs all seven
 [Laravel IAM](https://github.com/padosoft) packages at once and proves they boot, auto-register and migrate
 together — the fastest way to see the whole control plane working end to end on your machine.
 
@@ -129,19 +129,20 @@ registered `iam:*` commands and the full migrated `iam_*` schema:
 
 ## How the packages are installed
 
-All six packages are published on **[Packagist](https://packagist.org/packages/padosoft/)**, so they install
+All seven packages are published on **[Packagist](https://packagist.org/packages/padosoft/)**, so they install
 with a plain `composer require` — no custom `repositories`, no path/VCS links:
 
 ```jsonc
 "require": {
-  "padosoft/laravel-iam-server": "^1.20",   // security-fixed release line
-  "padosoft/laravel-iam-client": "^1.5"      // resolves to v1.6.0+
+  "padosoft/laravel-iam-server": "^1.23",   // delegation-ready release line
+  "padosoft/laravel-iam-client": "^1.9",    // act-aware PEP + TokenExchanger
+  "padosoft/laravel-iam-agents": "^0.2"      // delegated access for AI agents
   // …one per package, resolved straight from Packagist
 }
 ```
 
 Every internal `padosoft/laravel-iam-*` dependency is resolved from Packagist — the packages are fully
-independent, with no references back to a monorepo. And all six providers **auto-register** through
+independent, with no references back to a monorepo. And all seven providers **auto-register** through
 Laravel package discovery (run `php artisan package:discover` to see them), so there is **no manual
 provider/config wiring** to install them.
 
@@ -204,7 +205,7 @@ CI runs the full suite on PHP 8.3 and 8.4 on every push (see the badge above).
 
 ## The full ecosystem
 
-This demo installs the six PHP packages, but Laravel IAM is a **polyglot ecosystem of nine consumable
+This demo installs the seven PHP packages, but Laravel IAM is a **polyglot ecosystem of ten consumable
 packages** — the Laravel control plane plus thin, fail-closed client SDKs in three languages. Each one ships
 its own full documentation site (docmd). Here is what every package does and where to read about it:
 
@@ -213,6 +214,7 @@ its own full documentation site (docmd). Here is what every package does and whe
 | **laravel-iam-contracts** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-contracts) | Shared interfaces & DTOs — the dependency root every package implements or consumes | [doc →](https://doc.laravel-iam-contracts.padosoft.com) |
 | **laravel-iam-server** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-server) | The IAM server: identity, organizations, Application Registry + manifest, PDP (RBAC+ABAC+ReBAC), OAuth/OIDC, tamper-evident audit, governance/IGA, Admin API + panel | [doc →](https://doc.laravel-iam-server.padosoft.com) |
 | **laravel-iam-client** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-client) | Laravel client for consuming apps: OIDC login, JWT/JWKS verification, introspection, `iam.auth`/`iam.can` middleware, Gate adapter, policy cache, webhook receiver | [doc →](https://doc.laravel-iam-client.padosoft.com) |
+| **laravel-iam-agents** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-agents) | Delegated access for AI agents: agent registry, delegation grants with step-up consent, RFC 8693 token exchange (`act` claim), intersection PDP (user ∩ agent), `delegation` audit stream | [doc →](https://doc.laravel-iam-agents.padosoft.com) |
 | **laravel-iam-ai** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-ai) | Optional AI module: advisory-only governance (redaction + hallucination-guard + audit) over a sovereign transport (Regolo/Ollama, never OpenAI by default) | [doc →](https://doc.laravel-iam-ai.padosoft.com) |
 | **laravel-iam-directory** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-directory) | Optional directory module: LDAP / Active Directory login + JIT provisioning (LdapRecord) | [doc →](https://doc.laravel-iam-directory.padosoft.com) |
 | **laravel-iam-bridge-spatie-permission** | [Packagist](https://packagist.org/packages/padosoft/laravel-iam-bridge-spatie-permission) | Migration bridge from spatie/laravel-permission: scan, manifest generation, shadow mode, decision diffing, cutover, rollback | [doc →](https://doc.laravel-iam-bridge-spatie-permission.padosoft.com) |
