@@ -37,6 +37,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/demo/delegation/exchange', [DelegationDemoController::class, 'exchange'])->name('demo.delegation.exchange');
     Route::post('/demo/delegation/call', [DelegationDemoController::class, 'call'])->name('demo.delegation.call');
     Route::post('/demo/delegation/check', [DelegationDemoController::class, 'check'])->name('demo.delegation.check');
+    Route::post('/demo/delegation/preview', [DelegationDemoController::class, 'preview'])->name('demo.delegation.preview');
+    Route::post('/demo/delegation/chain', [DelegationDemoController::class, 'chain'])->name('demo.delegation.chain');
+    Route::post('/demo/delegation/review', [DelegationDemoController::class, 'review'])->name('demo.delegation.review');
     Route::post('/demo/delegation/revoke', [DelegationDemoController::class, 'revoke'])->name('demo.delegation.revoke');
 });
 

@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use League\OAuth2\Server\AuthorizationServer;
+use Padosoft\Iam\Agents\Consent\ConsentPreview;
 use Padosoft\Iam\Agents\Models\Agent;
 use Padosoft\Iam\Agents\Models\DelegationGrantModel;
 use Padosoft\Iam\Contracts\Crypto\TokenSigner;
@@ -16,10 +18,14 @@ use Padosoft\Iam\Contracts\Delegation\ActorRef;
 use Padosoft\Iam\Contracts\Delegation\AgentStatus;
 use Padosoft\Iam\Contracts\Delegation\DelegatedAuthorizationEngine;
 use Padosoft\Iam\Contracts\Delegation\DelegationChain;
+use Padosoft\Iam\Contracts\Delegation\DelegationGrantStatus;
 use Padosoft\Iam\Contracts\Delegation\DelegationGrantStore;
 use Padosoft\Iam\Contracts\Support\SubjectRef;
 use Padosoft\Iam\Domain\Audit\Models\AuditEvent;
 use Padosoft\Iam\Domain\Authorization\Models\Grant;
+use Padosoft\Iam\Domain\Governance\Reviews\CampaignEngine;
+use Padosoft\Iam\Domain\Governance\Reviews\Models\ReviewCampaign;
+use Padosoft\Iam\Domain\Governance\Reviews\Models\ReviewItem;
 use Padosoft\Iam\Domain\OAuth\Models\OauthClient;
 use Padosoft\Iam\Domain\OAuth\Models\OauthScope;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
@@ -35,6 +41,11 @@ class DelegationDemoController extends Controller
     public const AGENT_NAME = 'Invoice Copilot';
 
     public const AGENT_CLIENT_ID = 'cli_demo_agent';
+
+    /** The downstream agent of the multi-hop step: the one A hands the work to. */
+    public const HOP2_NAME = 'Invoice Archiver';
+
+    public const HOP2_CLIENT_ID = 'cli_demo_agent_hop2';
 
     /**
      * Step 1 — register + approve the demo agent. In the console this is two human actions
@@ -239,10 +250,190 @@ class DelegationDemoController extends Controller
     }
 
     /**
+     * Step 4b — the consent PREVIEW: what would this delegation actually cover?
+     *
+     * A consent screen that says "invoices.view" asks the user to approve a NAME. This asks the
+     * PDP's reverse index on BOTH subjects and shows the intersection — the concrete resources
+     * the agent could really touch. Truncation is declared, because a preview that understates
+     * the blast radius is worse than no preview.
+     */
+    public function preview(Request $request): RedirectResponse
+    {
+        $userId = (string) Auth::id();
+        $agent = Agent::query()->where('client_id', self::AGENT_CLIENT_ID)->first();
+        if ($userId === '' || $agent === null) {
+            return redirect('/')->with('delegation_flash', ['step' => 'preview', 'ok' => false, 'detail' => 'Run setup first.']);
+        }
+
+        $preview = app(ConsentPreview::class)->forGrant(
+            new SubjectRef('user', $userId),
+            $agent->subject(),
+            ['owner', 'viewer'],
+        );
+
+        $lines = [];
+        foreach ($preview['relations'] as $relation) {
+            $lines[] = $relation['relation'].': '.$relation['total'].' resource(s)'
+                .($relation['truncated'] ? ' (showing '.count($relation['resources']).')' : '')
+                .($relation['resources'] === [] ? '' : ' — '.implode(', ', $relation['resources']));
+        }
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'preview', 'ok' => true,
+            'detail' => ($lines === [] ? 'No overlap on the previewed relations' : implode(' · ', $lines))
+                .' — this is the INTERSECTION of what the user reaches and what the agent reaches, not the scope name.',
+        ]);
+    }
+
+    /**
+     * Step 4c — MULTI-HOP: agent A, already acting for the user, hands the work to agent B.
+     *
+     * Two things this proves and a flat description cannot: the `act` claim NESTS (B outermost,
+     * A inside), and the authority only NARROWS — B holds no permission of its own, so the
+     * intersection user ∩ A ∩ B denies what A alone was allowed. That second half is the whole
+     * reason multi-hop is safe: a longer chain can never buy authority.
+     */
+    public function chain(Request $request): RedirectResponse
+    {
+        $userId = (string) Auth::id();
+        $token = $request->session()->get('delegation_demo.token');
+        if ($userId === '' || ! is_array($token)) {
+            return redirect('/')->with('delegation_flash', ['step' => 'chain', 'ok' => false, 'detail' => 'Run the exchange first.']);
+        }
+
+        // Depth 2 for this walkthrough only. The package default is 1: multi-hop is correct by
+        // construction but widens accountability (whoever authorised B is A, not the user), so an
+        // installation should switch it on deliberately.
+        config()->set('iam-agents.max_delegation_depth', 2);
+        app()->forgetInstance(AuthorizationServer::class);
+
+        $secret = Str::random(32);
+        $client = OauthClient::query()->updateOrCreate(
+            ['client_id' => self::HOP2_CLIENT_ID],
+            [
+                'name' => self::HOP2_NAME,
+                'redirect_uris' => [],
+                'grants' => [ActClaim::GRANT_TYPE_TOKEN_EXCHANGE],
+                'scopes' => ['invoices.view'],
+                'is_confidential' => true,
+            ],
+        );
+        $client->secret = Hash::make($secret);
+        $client->save();
+
+        $hop2 = Agent::query()->firstOrCreate(
+            ['client_id' => self::HOP2_CLIENT_ID],
+            [
+                'id' => Agent::newId(),
+                'name' => self::HOP2_NAME,
+                'operator' => 'demo',
+                'max_scopes' => ['invoices.view'],
+                'status' => AgentStatus::Active->value,
+            ],
+        );
+        // Deliberately NO PDP grant for hop 2: it is the denying link that proves the intersection.
+
+        $sub = SymfonyRequest::create(route('iam.oauth.token'), 'POST', [
+            'grant_type' => ActClaim::GRANT_TYPE_TOKEN_EXCHANGE,
+            'client_id' => self::HOP2_CLIENT_ID,
+            'client_secret' => $secret,
+            'subject_token' => $token['jwt'],
+            'subject_token_type' => ActClaim::TOKEN_TYPE_ACCESS,
+        ]);
+        $response = app()->handle($sub);
+        $body = json_decode((string) $response->getContent(), true) ?: [];
+
+        if ($response->getStatusCode() !== 200) {
+            return redirect('/')->with('delegation_flash', [
+                'step' => 'chain', 'ok' => false,
+                'detail' => 'Chained exchange REFUSED — '.($body['error'] ?? 'error').' (reason in the delegation audit stream).',
+            ]);
+        }
+
+        $claims = app(TokenSigner::class)->parse($body['access_token']);
+        $agentA = Agent::query()->where('client_id', self::AGENT_CLIENT_ID)->first();
+
+        // The same permission A was allowed, now asked for the WHOLE chain.
+        $decision = app(DelegatedAuthorizationEngine::class)->checkDelegated(
+            new SubjectRef('user', $userId),
+            new DelegationChain(ActorRef::fromAgentId($hop2->id), ActorRef::fromAgentId((string) $agentA?->id)),
+            ['permission' => 'invoices.view'],
+        );
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'chain', 'ok' => true,
+            'detail' => 'act='.json_encode($claims['act'] ?? null).' (B outermost, A nested) · sub still='.($claims['sub'] ?? '?')
+                .' · grant still the ROOT one='.($claims['pds_dgr'] ?? '?')
+                .' — and invoices.view now ⇒ '.((($decision['allowed'] ?? false)) ? 'ALLOW' : 'DENY')
+                .': hop 2 holds no permission, so the chain NARROWS what hop 1 could do. A longer chain never buys authority.',
+        ]);
+    }
+
+    /**
      * Step 5 — revoke, then watch the next exchange fail. Uses the module's own store (the same
      * path the self-service DELETE and the console kill-switch go through), so the revocation is
      * audited with who revoked.
      */
+    /**
+     * Step 4d — ACCESS REVIEW: la delega finisce in una campagna di certificazione.
+     *
+     * Il punto che una descrizione non rende: una delega dimenticata è INVISIBILE. Un ruolo dato a
+     * una persona prima o poi salta fuori perché la persona cambia team o se ne va; un agente non ha
+     * un evento di ciclo di vita equivalente. Questa campagna la tira fuori, con addosso i segnali
+     * che dicono al reviewer se serve ancora — e la revoca del reviewer è una revoca vera, che passa
+     * dallo store e fa fallire l'exchange successivo esattamente come il pulsante "Revoke".
+     */
+    public function review(Request $request): RedirectResponse
+    {
+        $userId = (string) Auth::id();
+        $grant = DelegationGrantModel::query()
+            ->where('user_id', $userId)
+            ->where('status', DelegationGrantStatus::Active->value)
+            ->first();
+        if ($userId === '' || $grant === null) {
+            return redirect('/')->with('delegation_flash', ['step' => 'review', 'ok' => false, 'detail' => 'Run setup + consent first: there is no active delegation to certify.']);
+        }
+
+        // `reviewable_types` ESPLICITO: senza, la campagna certifica solo i grant RBAC — installare
+        // il modulo non fa comparire deleghe dentro campagne già pianificate.
+        $campaign = ReviewCampaign::create([
+            'name' => 'Demo — delegation certification',
+            'on_unconfirmed' => 'revoke',
+            'scope_json' => ['reviewable_types' => ['delegation_grant']],
+        ]);
+
+        $engine = app(CampaignEngine::class);
+        $created = $engine->open($campaign);
+
+        $item = ReviewItem::query()
+            ->where('campaign_id', $campaign->id)
+            ->where('reviewable_id', $grant->id)
+            ->first();
+        if ($item === null) {
+            return redirect('/')->with('delegation_flash', ['step' => 'review', 'ok' => false, 'detail' => 'The campaign opened but did not pick up the delegation.']);
+        }
+
+        $signals = is_array($item->signals_json) ? $item->signals_json : [];
+        $flags = [];
+        foreach (['never_used', 'dormant', 'agent_suspended'] as $flag) {
+            if (($signals[$flag] ?? false) === true) {
+                $flags[] = str_replace('_', ' ', $flag);
+            }
+        }
+
+        // Il reviewer revoca. Passa dallo store: audita ed emette DelegationGrantRevoked, quindi il
+        // prossimo exchange fallisce — non è una decisione "sulla carta".
+        $engine->decide($item, 'revoked', 'user:'.$userId, 'demo: certificata come non più necessaria');
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'review', 'ok' => true,
+            'detail' => "Campaign opened ({$created} item) · reviewer = {$item->reviewer_subject} (the delegating user)"
+                .($flags === [] ? '' : ' · signals: '.implode(', ', $flags))
+                ." · certified as REVOKED → grant status is now {$grant->fresh()?->status}."
+                .' Try "Exchange" again: it fails, because the review revoked for real.',
+        ]);
+    }
+
     public function revoke(Request $request): RedirectResponse
     {
         $userId = (string) Auth::id();

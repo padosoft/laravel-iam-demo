@@ -71,7 +71,41 @@
 
     {{-- STEP 5 + 6 — intersection via the PDP (decision ids), then revoke --}}
     <div class="card">
-        <h3 style="margin:0 0 8px;">5 · PDP decision ids &nbsp;·&nbsp; 6 · Revoke</h3>
+        <h3 style="margin:0 0 8px;">5a · Consent preview &nbsp;·&nbsp; 5b · Multi-hop chain</h3>
+        <p style="color:var(--mut);font-size:13px;margin:0 0 10px;">
+            <strong>Preview</strong> answers what a scope NAME cannot: which concrete resources this
+            delegation would really cover — the intersection of what the user reaches and what the
+            agent reaches, with truncation declared.
+            <strong>Chain</strong> hands the work to a second agent: the <code>act</code> claim nests
+            (B outermost, A inside), the <code>sub</code> stays the user, the ROOT grant still governs —
+            and because hop 2 holds no permission of its own, the same call that was ALLOW becomes DENY.
+            A longer chain never buys authority.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <form method="POST" action="{{ route('demo.delegation.preview') }}">@csrf<button type="submit">Preview effective authority</button></form>
+            <form method="POST" action="{{ route('demo.delegation.chain') }}">@csrf<button type="submit">Delegate onward (A → B)</button></form>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin:0 0 8px;">5c · Access review (IGA)</h3>
+        <p style="color:var(--mut);font-size:13px;margin:0 0 10px;">
+            A forgotten delegation is <strong>invisible</strong>: a role given to a person eventually
+            surfaces because the person changes team or leaves, but an agent has no equivalent
+            lifecycle event. This opens a certification campaign that names
+            <code>reviewable_types: ["delegation_grant"]</code> — explicitly, because installing the
+            module must not make delegations appear inside campaigns somebody already planned — and
+            shows who reviews it (the delegating user) with the signals that say whether it is still
+            needed. The reviewer's revoke is a <em>real</em> revoke: press Exchange again afterwards
+            and it fails, exactly like the Revoke button.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <form method="POST" action="{{ route('demo.delegation.review') }}">@csrf<button type="submit">Certify in a campaign</button></form>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin:0 0 8px;">6 · PDP decision ids &nbsp;·&nbsp; 7 · Revoke</h3>
         <p style="color:var(--mut);font-size:13px;margin:0 0 10px;">Same intersection, asked to the PDP directly (both sub-decision ids cited). Then revoke and press Exchange again: <code>invalid_grant</code>.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <form method="POST" action="{{ route('demo.delegation.check') }}">@csrf<button type="submit">Run delegated checks</button></form>
