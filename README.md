@@ -201,7 +201,39 @@ introspection** → intersection decision → Laravel Context — with zero mock
 call travels through an internal kernel dispatch because the demo runs server and resource server
 in one single-threaded app; in production it is a normal HTTPS call to the IAM host.)
 
-### Step 5 · Ask the PDP directly (decision ids)
+### Step 5a · Preview what the delegation actually covers
+
+**Do:** press **“Preview effective authority”.**
+
+**You see:** the concrete resources per relation, with `total` and — when the list is longer than
+the limit — an explicit note that it was truncated.
+
+**It proves:** a consent screen that says `invoices.view` asks you to approve a **name**. This asks
+the PDP's reverse index on **both** subjects and shows the **intersection** — what the agent could
+really touch on your behalf. Truncation is declared on purpose: showing ten of ten thousand without
+saying so would make a huge delegation look small, which is worse than showing nothing. An empty
+list is the useful answer too — it means granting would give access to nothing.
+
+The preview is **not** an authorization: it is a snapshot taken now, and the PDP at request time
+stays the truth.
+
+### Step 5b · Multi-hop — agent A hands the work to agent B
+
+**Do:** press **“Delegate onward (A → B)”.**
+
+**You see:** `act={"sub":"agent:B","act":{"sub":"agent:A"}}` — B outermost, A nested — with `sub`
+still **you** and `pds_dgr` still the **root** grant. Then the same `invoices.view` that was ALLOW
+for A alone comes back **DENY**.
+
+**It proves:** two things a description cannot. The claim **nests** per RFC 8693 §4.1, and the
+authority only **narrows** — the demo gives hop 2 no permission of its own, so the intersection
+`user ∩ A ∩ B` denies what A alone was allowed. That is why a longer chain is safe: it can never
+buy authority. The cost is **accountability**, not authority — whoever authorised B is A, not you —
+which is why `max_delegation_depth` ships as **1** and this step raises it for the walkthrough only.
+
+Revoking the **root** grant (step 7) stops the whole chain, not just the last link.
+
+### Step 6 · Ask the PDP directly (decision ids)
 
 **Do:** press **“Run delegated checks”.**
 
@@ -212,7 +244,7 @@ agent does not: intersection, never union.*
 sub-decision ids, so an auditor can replay separately *why the user side allowed* and *why the
 agent side allowed*.
 
-### Step 6 · Revoke — and watch the next exchange die
+### Step 7 · Revoke — and watch the next exchange die
 
 **Do:** press **“Revoke my grant”**, then press **“Exchange” again**.
 
@@ -264,7 +296,7 @@ with a plain `composer require` — no custom `repositories`, no path/VCS links:
 
 ```jsonc
 "require": {
-  "padosoft/laravel-iam-server": "^1.23",   // delegation-ready release line
+  "padosoft/laravel-iam-server": "^1.26",   // delegation-ready; 1.26 carries sid into delegated tokens (multi-hop)
   "padosoft/laravel-iam-client": "^1.9",    // act-aware PEP + TokenExchanger
   "padosoft/laravel-iam-agents": "^1.0"      // delegated access for AI agents
   // …one per package, resolved straight from Packagist

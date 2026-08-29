@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use League\OAuth2\Server\AuthorizationServer;
+use Padosoft\Iam\Agents\Consent\ConsentPreview;
 use Padosoft\Iam\Agents\Models\Agent;
 use Padosoft\Iam\Agents\Models\DelegationGrantModel;
 use Padosoft\Iam\Contracts\Crypto\TokenSigner;
@@ -35,6 +37,11 @@ class DelegationDemoController extends Controller
     public const AGENT_NAME = 'Invoice Copilot';
 
     public const AGENT_CLIENT_ID = 'cli_demo_agent';
+
+    /** The downstream agent of the multi-hop step: the one A hands the work to. */
+    public const HOP2_NAME = 'Invoice Archiver';
+
+    public const HOP2_CLIENT_ID = 'cli_demo_agent_hop2';
 
     /**
      * Step 1 — register + approve the demo agent. In the console this is two human actions
@@ -235,6 +242,126 @@ class DelegationDemoController extends Controller
         return redirect('/')->with('delegation_flash', [
             'step' => 'check', 'ok' => true,
             'detail' => implode(' · ', $results).' — the user HAS invoices.create; the agent does not: intersection, never union.',
+        ]);
+    }
+
+    /**
+     * Step 4b — the consent PREVIEW: what would this delegation actually cover?
+     *
+     * A consent screen that says "invoices.view" asks the user to approve a NAME. This asks the
+     * PDP's reverse index on BOTH subjects and shows the intersection — the concrete resources
+     * the agent could really touch. Truncation is declared, because a preview that understates
+     * the blast radius is worse than no preview.
+     */
+    public function preview(Request $request): RedirectResponse
+    {
+        $userId = (string) Auth::id();
+        $agent = Agent::query()->where('client_id', self::AGENT_CLIENT_ID)->first();
+        if ($userId === '' || $agent === null) {
+            return redirect('/')->with('delegation_flash', ['step' => 'preview', 'ok' => false, 'detail' => 'Run setup first.']);
+        }
+
+        $preview = app(ConsentPreview::class)->forGrant(
+            new SubjectRef('user', $userId),
+            $agent->subject(),
+            ['owner', 'viewer'],
+        );
+
+        $lines = [];
+        foreach ($preview['relations'] as $relation) {
+            $lines[] = $relation['relation'].': '.$relation['total'].' resource(s)'
+                .($relation['truncated'] ? ' (showing '.count($relation['resources']).')' : '')
+                .($relation['resources'] === [] ? '' : ' — '.implode(', ', $relation['resources']));
+        }
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'preview', 'ok' => true,
+            'detail' => ($lines === [] ? 'No overlap on the previewed relations' : implode(' · ', $lines))
+                .' — this is the INTERSECTION of what the user reaches and what the agent reaches, not the scope name.',
+        ]);
+    }
+
+    /**
+     * Step 4c — MULTI-HOP: agent A, already acting for the user, hands the work to agent B.
+     *
+     * Two things this proves and a flat description cannot: the `act` claim NESTS (B outermost,
+     * A inside), and the authority only NARROWS — B holds no permission of its own, so the
+     * intersection user ∩ A ∩ B denies what A alone was allowed. That second half is the whole
+     * reason multi-hop is safe: a longer chain can never buy authority.
+     */
+    public function chain(Request $request): RedirectResponse
+    {
+        $userId = (string) Auth::id();
+        $token = $request->session()->get('delegation_demo.token');
+        if ($userId === '' || ! is_array($token)) {
+            return redirect('/')->with('delegation_flash', ['step' => 'chain', 'ok' => false, 'detail' => 'Run the exchange first.']);
+        }
+
+        // Depth 2 for this walkthrough only. The package default is 1: multi-hop is correct by
+        // construction but widens accountability (whoever authorised B is A, not the user), so an
+        // installation should switch it on deliberately.
+        config()->set('iam-agents.max_delegation_depth', 2);
+        app()->forgetInstance(AuthorizationServer::class);
+
+        $secret = Str::random(32);
+        $client = OauthClient::query()->updateOrCreate(
+            ['client_id' => self::HOP2_CLIENT_ID],
+            [
+                'name' => self::HOP2_NAME,
+                'redirect_uris' => [],
+                'grants' => [ActClaim::GRANT_TYPE_TOKEN_EXCHANGE],
+                'scopes' => ['invoices.view'],
+                'is_confidential' => true,
+            ],
+        );
+        $client->secret = Hash::make($secret);
+        $client->save();
+
+        $hop2 = Agent::query()->firstOrCreate(
+            ['client_id' => self::HOP2_CLIENT_ID],
+            [
+                'id' => Agent::newId(),
+                'name' => self::HOP2_NAME,
+                'operator' => 'demo',
+                'max_scopes' => ['invoices.view'],
+                'status' => AgentStatus::Active->value,
+            ],
+        );
+        // Deliberately NO PDP grant for hop 2: it is the denying link that proves the intersection.
+
+        $sub = SymfonyRequest::create(route('iam.oauth.token'), 'POST', [
+            'grant_type' => ActClaim::GRANT_TYPE_TOKEN_EXCHANGE,
+            'client_id' => self::HOP2_CLIENT_ID,
+            'client_secret' => $secret,
+            'subject_token' => $token['jwt'],
+            'subject_token_type' => ActClaim::TOKEN_TYPE_ACCESS,
+        ]);
+        $response = app()->handle($sub);
+        $body = json_decode((string) $response->getContent(), true) ?: [];
+
+        if ($response->getStatusCode() !== 200) {
+            return redirect('/')->with('delegation_flash', [
+                'step' => 'chain', 'ok' => false,
+                'detail' => 'Chained exchange REFUSED — '.($body['error'] ?? 'error').' (reason in the delegation audit stream).',
+            ]);
+        }
+
+        $claims = app(TokenSigner::class)->parse($body['access_token']);
+        $agentA = Agent::query()->where('client_id', self::AGENT_CLIENT_ID)->first();
+
+        // The same permission A was allowed, now asked for the WHOLE chain.
+        $decision = app(DelegatedAuthorizationEngine::class)->checkDelegated(
+            new SubjectRef('user', $userId),
+            new DelegationChain(ActorRef::fromAgentId($hop2->id), ActorRef::fromAgentId((string) $agentA?->id)),
+            ['permission' => 'invoices.view'],
+        );
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'chain', 'ok' => true,
+            'detail' => 'act='.json_encode($claims['act'] ?? null).' (B outermost, A nested) · sub still='.($claims['sub'] ?? '?')
+                .' · grant still the ROOT one='.($claims['pds_dgr'] ?? '?')
+                .' — and invoices.view now ⇒ '.((($decision['allowed'] ?? false)) ? 'ALLOW' : 'DENY')
+                .': hop 2 holds no permission, so the chain NARROWS what hop 1 could do. A longer chain never buys authority.',
         ]);
     }
 
