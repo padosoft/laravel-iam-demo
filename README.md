@@ -316,6 +316,75 @@ middleware 401/200/403 incl. the plain-user-token 401, dual-identity audit, revo
 | Internal introspection dispatch (single-app demo only) | `app/Iam/KernelDispatchHandler.php` |
 | The acceptance test | `tests/Feature/DelegationDemoTest.php` |
 
+## Scheduled routines — the 3am problem, walked through
+
+`padosoft/laravel-routines` runs automations **when the user is not there**. The rest of this
+ecosystem rests on one invariant — *an agent proposes, the user confirms on screen, per action* —
+and a routine firing at 3am has nobody to ask.
+
+Every other automation platform resolves that contradiction in one of the two worst ways: run with
+**application credentials** (the automation can do everything, forever, and the audit says
+"system") or run with the **user's stored token** (their identity handed to a process that acts
+unwatched). This demo shows the third way.
+
+### The demo routine
+
+`app/Routines/InvoiceReminderTarget.php` chases overdue invoices. Chasing is harmless, so it runs
+alone. Writing an invoice off moves money and is irreversible, so the **mandate covers
+`invoice.remind` and not `invoice.write_off`** — and that single omission is what the walkthrough is
+about.
+
+```php
+$routine = app(RoutineManager::class)->create([
+    'owner'          => 'user:1',
+    'name'           => 'Solleciti fatture',
+    'target_type'    => 'demo.invoice-reminder',
+    'target_payload' => ['overdue_days' => 30, 'write_off_days' => 365],
+    'trigger_kind'   => 'cron',
+    'cron'           => '0 6 * * 1-5',
+    'timezone'       => 'Europe/Rome',   // THEIR 6am, not the server's
+    'budget_per_run' => 0.50,
+]);
+
+app(RoutineManager::class)->grantMandate($routine,
+    actionClasses: ['invoice.remind'],   // note what is NOT here
+    budgetCeiling: 0.50,
+    confirmationId: 'stepup_demo', aal: 'aal2',
+);
+```
+
+### What happens, step by step
+
+| Step | What you see |
+|---|---|
+| **1. Inside the mandate** | `routines:tick` fires it, reminders go out, the run is `succeeded`. Nobody is disturbed. |
+| **2. Outside it** | INV-003 is 400 days overdue. The run goes to **`paused`** — not failed (nothing is broken), not succeeded (nothing was done) — and the question leaves on a channel with just the facts a person needs: invoice, amount, days overdue. |
+| **3. Nobody answers** | Tick again. And again. **Nothing happens.** A pause is not retried on a backoff: it waits for a person. This is the negative the whole design exists to make true. |
+| **4. A human approves** | The fire **resumes with the same idempotency key** — for the target it is the *same work*, so it writes off the invoice without re-sending the reminders it had already sent before stopping. |
+| **5. Or rejects** | Closed as `skipped` with the mandatory reason — not `failed`, which would retry it. Nothing broke: someone decided no. |
+| **6. Someone edits the payload** | `mandateCovers()` turns `false`. The consent was for **that** configuration — the same principle as PSD2 dynamic linking. |
+
+### Run it
+
+```bash
+php artisan vendor:publish --tag=routines-migrations && php artisan migrate
+php artisan routines:list
+php artisan routines:tick
+```
+
+Then look at the API the panel consumes:
+
+```bash
+curl -b cookies.txt localhost:8000/api/routines/v1/attention      # what is waiting for you
+curl -b cookies.txt localhost:8000/api/routines/v1/health         # why nothing fired, if nothing did
+```
+
+`/health` **diagnoses** rather than reports: a panel that says "last tick 47 minutes ago" has
+informed you; one that says *"the Laravel scheduler is not running, check the cron"* has solved it.
+
+**→ The whole loop is an executable test: `tests/Feature/RoutinesDemoTest.php` (12 tests).** It
+includes the one that matters most — *with no answer, nothing happens*.
+
 ## How the packages are installed
 
 All seven packages are published on **[Packagist](https://packagist.org/packages/padosoft/)**, so they install

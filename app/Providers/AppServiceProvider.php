@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Http\Controllers\DelegationDemoController;
 use App\Iam\DemoTotpVerifier;
 use App\Iam\KernelDispatchHandler;
+use App\Models\User;
+use App\Routines\InvoiceReminderTarget;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\HandlerStack;
 use Illuminate\Support\Facades\Cache;
@@ -12,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use Padosoft\Iam\Client\Auth\DelegatedTokenVerifier;
 use Padosoft\Iam\Client\Support\DelegatedBearerInspector;
 use Padosoft\Iam\Contracts\Assurance\FactorVerifier;
+use Padosoft\Routines\Targets\TargetRegistry;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +31,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The demo's routine target: chasing overdue invoices, and asking a human before writing
+        // one off. Registered from the application's own provider - the scheduler has no list of
+        // what can be run, which is what lets a package add a target without the core changing.
+        $this->callAfterResolving(TargetRegistry::class, function (TargetRegistry $registry): void {
+            $registry->register(new InvoiceReminderTarget);
+        });
+
+        // The panel shows an email instead of `user:7`. The core does not know this app's user
+        // model, so it does not guess: without a resolver it shows the canonical identifier,
+        // which is still true, just less useful.
+        config([
+            'routines.owner_label_resolver' => fn (string $owner): ?string => str_starts_with($owner, 'user:')
+                ? User::find((int) substr($owner, 5))?->email
+                : null,
+        ]);
+
         // DEMO ONLY — the factor behind the native step-up (delegation consent). In production the
         // server's fail-closed default stays (no factor configured => no step-up => no consent):
         // wire your real TOTP/passkey verifier or rebel-step-up instead of this stand-in.
