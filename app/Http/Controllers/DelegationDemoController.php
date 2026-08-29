@@ -18,10 +18,14 @@ use Padosoft\Iam\Contracts\Delegation\ActorRef;
 use Padosoft\Iam\Contracts\Delegation\AgentStatus;
 use Padosoft\Iam\Contracts\Delegation\DelegatedAuthorizationEngine;
 use Padosoft\Iam\Contracts\Delegation\DelegationChain;
+use Padosoft\Iam\Contracts\Delegation\DelegationGrantStatus;
 use Padosoft\Iam\Contracts\Delegation\DelegationGrantStore;
 use Padosoft\Iam\Contracts\Support\SubjectRef;
 use Padosoft\Iam\Domain\Audit\Models\AuditEvent;
 use Padosoft\Iam\Domain\Authorization\Models\Grant;
+use Padosoft\Iam\Domain\Governance\Reviews\CampaignEngine;
+use Padosoft\Iam\Domain\Governance\Reviews\Models\ReviewCampaign;
+use Padosoft\Iam\Domain\Governance\Reviews\Models\ReviewItem;
 use Padosoft\Iam\Domain\OAuth\Models\OauthClient;
 use Padosoft\Iam\Domain\OAuth\Models\OauthScope;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
@@ -370,6 +374,66 @@ class DelegationDemoController extends Controller
      * path the self-service DELETE and the console kill-switch go through), so the revocation is
      * audited with who revoked.
      */
+    /**
+     * Step 4d — ACCESS REVIEW: la delega finisce in una campagna di certificazione.
+     *
+     * Il punto che una descrizione non rende: una delega dimenticata è INVISIBILE. Un ruolo dato a
+     * una persona prima o poi salta fuori perché la persona cambia team o se ne va; un agente non ha
+     * un evento di ciclo di vita equivalente. Questa campagna la tira fuori, con addosso i segnali
+     * che dicono al reviewer se serve ancora — e la revoca del reviewer è una revoca vera, che passa
+     * dallo store e fa fallire l'exchange successivo esattamente come il pulsante "Revoke".
+     */
+    public function review(Request $request): RedirectResponse
+    {
+        $userId = (string) Auth::id();
+        $grant = DelegationGrantModel::query()
+            ->where('user_id', $userId)
+            ->where('status', DelegationGrantStatus::Active->value)
+            ->first();
+        if ($userId === '' || $grant === null) {
+            return redirect('/')->with('delegation_flash', ['step' => 'review', 'ok' => false, 'detail' => 'Run setup + consent first: there is no active delegation to certify.']);
+        }
+
+        // `reviewable_types` ESPLICITO: senza, la campagna certifica solo i grant RBAC — installare
+        // il modulo non fa comparire deleghe dentro campagne già pianificate.
+        $campaign = ReviewCampaign::create([
+            'name' => 'Demo — delegation certification',
+            'on_unconfirmed' => 'revoke',
+            'scope_json' => ['reviewable_types' => ['delegation_grant']],
+        ]);
+
+        $engine = app(CampaignEngine::class);
+        $created = $engine->open($campaign);
+
+        $item = ReviewItem::query()
+            ->where('campaign_id', $campaign->id)
+            ->where('reviewable_id', $grant->id)
+            ->first();
+        if ($item === null) {
+            return redirect('/')->with('delegation_flash', ['step' => 'review', 'ok' => false, 'detail' => 'The campaign opened but did not pick up the delegation.']);
+        }
+
+        $signals = is_array($item->signals_json) ? $item->signals_json : [];
+        $flags = [];
+        foreach (['never_used', 'dormant', 'agent_suspended'] as $flag) {
+            if (($signals[$flag] ?? false) === true) {
+                $flags[] = str_replace('_', ' ', $flag);
+            }
+        }
+
+        // Il reviewer revoca. Passa dallo store: audita ed emette DelegationGrantRevoked, quindi il
+        // prossimo exchange fallisce — non è una decisione "sulla carta".
+        $engine->decide($item, 'revoked', 'user:'.$userId, 'demo: certificata come non più necessaria');
+
+        return redirect('/')->with('delegation_flash', [
+            'step' => 'review', 'ok' => true,
+            'detail' => "Campaign opened ({$created} item) · reviewer = {$item->reviewer_subject} (the delegating user)"
+                .($flags === [] ? '' : ' · signals: '.implode(', ', $flags))
+                ." · certified as REVOKED → grant status is now {$grant->fresh()?->status}."
+                .' Try "Exchange" again: it fails, because the review revoked for real.',
+        ]);
+    }
+
     public function revoke(Request $request): RedirectResponse
     {
         $userId = (string) Auth::id();

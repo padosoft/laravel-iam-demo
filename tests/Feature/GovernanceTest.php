@@ -244,7 +244,12 @@ class GovernanceTest extends TestCase
 
     private function itemFor(ReviewCampaign $campaign, Grant $grant): ReviewItem
     {
-        $item = $campaign->items()->where('grant_id', $grant->id)->first();
+        // Gli item sono polimorfici da iam-server 1.27: (reviewable_type, reviewable_id) al posto
+        // di grant_id, così un modulo può registrare la propria sorgente certificabile.
+        $item = $campaign->items()
+            ->where('reviewable_type', 'grant')
+            ->where('reviewable_id', $grant->id)
+            ->first();
         $this->assertNotNull($item, "review item generated for grant {$grant->id}");
 
         return $item;

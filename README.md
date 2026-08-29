@@ -233,6 +233,33 @@ which is why `max_delegation_depth` ships as **1** and this step raises it for t
 
 Revoking the **root** grant (step 7) stops the whole chain, not just the last link.
 
+### Step 5c · Access review — certify the delegation before you forget it
+
+**Do:** press **“Certify in a campaign”.**
+
+**You see:** a campaign opens, picks up your delegation, names **you** as the reviewer, lists the
+signals it carries (`never used`, `dormant`, …), and records your decision as **revoked** — after
+which pressing **Exchange** again fails.
+
+**It proves:** a delegation is an access, and accesses get re-examined. The reason this matters more
+for agents than for people is the part worth sitting with: a role given to a person eventually
+surfaces because the person changes team or leaves — the organisation has a process that *notices*.
+**An agent has no equivalent lifecycle event.** A delegation that stopped being necessary six months
+ago is still there, still valid, still exchangeable, and nothing in the ordinary course of business
+will ever point at it.
+
+Two details in the code are the design, not decoration:
+
+- The campaign names `reviewable_types: ["delegation_grant"]` **explicitly**. Leave it out and the
+  campaign certifies grants only, exactly as it always did — installing the agents module must not
+  make delegations appear inside campaigns somebody already planned and scheduled.
+- The reviewer's revoke goes through the delegation **store**, not a database update: it audits, it
+  fires `DelegationGrantRevoked`, and the very next exchange fails. A certification that only marked
+  a row would be evidence of nothing.
+
+The reviewer defaults to **the delegating user** — they gave the consent, and they are the only
+person who actually knows whether the agent is still needed.
+
 ### Step 6 · Ask the PDP directly (decision ids)
 
 **Do:** press **“Run delegated checks”.**
