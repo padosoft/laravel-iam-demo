@@ -11,6 +11,7 @@ use Padosoft\Routines\Models\Routine;
 use Padosoft\Routines\Models\RoutineRun;
 use Padosoft\Routines\RoutineManager;
 use Padosoft\Routines\Scheduling\RoutineDispatcher;
+use Padosoft\Routines\Testing\TargetContract;
 use Tests\TestCase;
 
 /**
@@ -258,6 +259,25 @@ class RoutinesDemoTest extends TestCase
             'cron' => '0 6 * * *',
             'timezone' => 'Europe/Rome',
         ])->assertStatus(422)->assertJsonPath('errors.overdue_days.0', 'Give a number of days, at least 1.');
+    }
+
+    public function test_our_own_target_satisfies_the_shipped_contract(): void
+    {
+        // The engine's guarantees do not cover the target: that part is application code, written
+        // here. `TargetContract` is the package's own contract in executable form, so this app
+        // checks it against its own target instead of trusting a README it read once.
+        TargetContract::assertAll(
+            new InvoiceReminderTarget,
+            // A write-off threshold no invoice reaches: this configuration stays inside the
+            // mandate, which is what the idempotency check needs.
+            validPayload: ['overdue_days' => 30, 'write_off_days' => 1000],
+            invalidPayload: ['overdue_days' => 0],
+            // This target decides from the CONFIGURATION, not from the fire's input: at 365 days
+            // INV-003 (400 days overdue) is beyond the mandate, so the target must STOP and ask —
+            // not fail (which would give up) and not succeed (which would mean acting without
+            // permission).
+            outOfMandatePayload: ['overdue_days' => 30, 'write_off_days' => 365],
+        );
     }
 
     public function test_the_invoice_fixture_still_has_one_beyond_any_reasonable_mandate(): void

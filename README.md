@@ -363,6 +363,7 @@ app(RoutineManager::class)->grantMandate($routine,
 | **4. A human approves** | The fire **resumes with the same idempotency key** — for the target it is the *same work*, so it writes off the invoice without re-sending the reminders it had already sent before stopping. |
 | **5. Or rejects** | Closed as `skipped` with the mandatory reason — not `failed`, which would retry it. Nothing broke: someone decided no. |
 | **6. Someone edits the payload** | `mandateCovers()` turns `false`. The consent was for **that** configuration — the same principle as PSD2 dynamic linking. |
+| **7. Our own target is checked against the contract** | `TargetContract::assertAll()` — the package's rules for writing a target, in executable form. The engine's guarantees stop at the engine; this is the part written here, so it gets asserted here. Empty its `actionClasses` and the test goes red with *"no mandate will be able to authorise it"*. |
 
 ### Run it
 
@@ -382,7 +383,7 @@ curl -b cookies.txt localhost:8000/api/routines/v1/health         # why nothing 
 `/health` **diagnoses** rather than reports: a panel that says "last tick 47 minutes ago" has
 informed you; one that says *"the Laravel scheduler is not running, check the cron"* has solved it.
 
-**→ The whole loop is an executable test: `tests/Feature/RoutinesDemoTest.php` (12 tests).** It
+**→ The whole loop is an executable test: `tests/Feature/RoutinesDemoTest.php` (13 tests).** It
 includes the one that matters most — *with no answer, nothing happens*.
 
 ## How the packages are installed

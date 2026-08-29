@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "760cd60e6f1e9fb9d9a9ce433a769c16",
+    "content-hash": "e1e0acbcb79bf9bc850c2de734f9978c",
     "packages": [
         {
             "name": "brick/math",
@@ -3235,43 +3235,44 @@
         },
         {
             "name": "padosoft/laravel-routines",
-            "version": "v1.0.2",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/laravel-routines.git",
-                "reference": "0f231c6bf66d3625ef469fd1b04c2cca8e68c220"
+                "reference": "aa4d46807a4607ee7e9a9b22f9503505be28e5b1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/laravel-routines/zipball/0f231c6bf66d3625ef469fd1b04c2cca8e68c220",
-                "reference": "0f231c6bf66d3625ef469fd1b04c2cca8e68c220",
+                "url": "https://api.github.com/repos/padosoft/laravel-routines/zipball/aa4d46807a4607ee7e9a9b22f9503505be28e5b1",
+                "reference": "aa4d46807a4607ee7e9a9b22f9503505be28e5b1",
                 "shasum": ""
             },
             "require": {
                 "dragonmantank/cron-expression": "^3.3",
-                "illuminate/console": "^11.0|^12.0|^13.0",
-                "illuminate/database": "^11.0|^12.0|^13.0",
-                "illuminate/http": "^11.0|^12.0|^13.0",
-                "illuminate/routing": "^11.0|^12.0|^13.0",
-                "illuminate/support": "^11.0|^12.0|^13.0",
-                "padosoft/laravel-routines-contracts": "^1.0",
+                "illuminate/console": "^12.0|^13.0",
+                "illuminate/database": "^12.0|^13.0",
+                "illuminate/http": "^12.0|^13.0",
+                "illuminate/routing": "^12.0|^13.0",
+                "illuminate/support": "^12.0|^13.0",
+                "padosoft/laravel-routines-contracts": "^1.2",
                 "php": "^8.3",
                 "psr/log": "^3.0",
                 "spatie/laravel-package-tools": "^1.16"
             },
             "require-dev": {
                 "larastan/larastan": "^3.0",
-                "laravel/framework": "^11.0|^12.0|^13.0",
+                "laravel/framework": "^12.0|^13.0",
                 "laravel/pint": "^1.18",
-                "orchestra/testbench": "^9.0|^10.0|^11.0",
-                "pestphp/pest": "^3.0",
-                "pestphp/pest-plugin-laravel": "^3.0"
+                "orchestra/testbench": "^10.0|^11.0",
+                "pestphp/pest": "^4.4",
+                "pestphp/pest-plugin-laravel": "^4.1"
             },
             "suggest": {
                 "padosoft/laravel-ai-finops": "Tetti di spesa per fire e per periodo, con sospensione automatica.",
                 "padosoft/laravel-iam-agents": "Fa girare le routine con identita' delegata (sub + act) e autorita' = intersezione stretta, rivalutata a ogni fire.",
                 "padosoft/laravel-rebel-channels": "Porta su Telegram/WhatsApp/SMS/voce la domanda di una routine che si e' fermata.",
-                "padosoft/laravel-routines-admin": "Il pannello: schedule, ledger, mandati e la coda di cio' che aspetta una risposta."
+                "padosoft/laravel-routines-admin": "Il pannello: schedule, ledger, mandati e la coda di cio' che aspetta una risposta.",
+                "phpunit/phpunit": "Required to use the shipped target-contract kit (Padosoft\\\\Routines\\\\Testing\\\\AssertsTargetContract) in your own test suite."
             },
             "type": "library",
             "extra": {
@@ -3302,22 +3303,22 @@
             ],
             "support": {
                 "issues": "https://github.com/padosoft/laravel-routines/issues",
-                "source": "https://github.com/padosoft/laravel-routines/tree/v1.0.2"
+                "source": "https://github.com/padosoft/laravel-routines/tree/v1.2.0"
             },
-            "time": "2026-08-29T18:21:44+00:00"
+            "time": "2026-08-29T19:30:25+00:00"
         },
         {
             "name": "padosoft/laravel-routines-contracts",
-            "version": "v1.1.0",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/padosoft/laravel-routines-contracts.git",
-                "reference": "5722795755434ed3a013fda891fa7f448062a013"
+                "reference": "52a251701b9046fc62fe43bf12c889d8426daf9f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/padosoft/laravel-routines-contracts/zipball/5722795755434ed3a013fda891fa7f448062a013",
-                "reference": "5722795755434ed3a013fda891fa7f448062a013",
+                "url": "https://api.github.com/repos/padosoft/laravel-routines-contracts/zipball/52a251701b9046fc62fe43bf12c889d8426daf9f",
+                "reference": "52a251701b9046fc62fe43bf12c889d8426daf9f",
                 "shasum": ""
             },
             "require": {
@@ -3349,9 +3350,9 @@
             ],
             "support": {
                 "issues": "https://github.com/padosoft/laravel-routines-contracts/issues",
-                "source": "https://github.com/padosoft/laravel-routines-contracts/tree/v1.1.0"
+                "source": "https://github.com/padosoft/laravel-routines-contracts/tree/v1.2.0"
             },
-            "time": "2026-08-29T15:50:21+00:00"
+            "time": "2026-08-29T19:04:26+00:00"
         },
         {
             "name": "paragonie/random_compat",
